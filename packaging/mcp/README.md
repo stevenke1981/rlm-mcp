@@ -55,7 +55,7 @@ Replace `{{RLM_BINARY}}` with an absolute path.
 
 No `CBM_*` variables — this server does not call codebase-memory-mcp.
 
-## Tools (31)
+## Tools (33)
 
 See `tools-list.snapshot.json` for the full contract. Core loop: `rlm_scan`, `rlm_peek`, `rlm_slice`, `rlm_transform`, `rlm_artifact_*`, `rlm_chunk`, `rlm_map_plan`, `rlm_map_claim`, `rlm_map_complete`, `rlm_reduce_merge`, `rlm_task_*`, `rlm_trajectory_*`, `rlm_budget_*`, `rlm_benchmark_*`.
 

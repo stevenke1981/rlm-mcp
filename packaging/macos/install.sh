@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Install rlm-mcp from GitHub Release (macOS Apple Silicon).
+#
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/macos/install.sh | bash
+#   RLM_VERSION=v0.1.1 ./packaging/macos/install.sh
+
+set -euo pipefail
+
+REPO="${RLM_REPO:-stevenke1981/rlm-mcp}"
+VERSION="${RLM_VERSION:-latest}"
+INSTALL_DIR="${RLM_INSTALL_DIR:-$HOME/.local/bin}"
+CONFIG_DIR="${RLM_CONFIG_DIR:-$HOME/.config/rlm-mcp/bin}"
+
+arch="$(uname -m)"
+case "$arch" in
+  arm64) TARGET="aarch64-apple-darwin" ;;
+  *)
+    echo "Unsupported macOS architecture in current release workflow: $arch" >&2
+    exit 1
+    ;;
+esac
+
+if [ "$VERSION" = "latest" ]; then
+  API="https://api.github.com/repos/${REPO}/releases/latest"
+  VERSION="$(curl -fsSL "$API" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')"
+fi
+
+VERSION_NO_V="${VERSION#v}"
+ARCHIVE="rlm-mcp-${VERSION_NO_V}-${TARGET}.tar.gz"
+BASE="https://github.com/${REPO}/releases/download/${VERSION}"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+echo "Downloading ${BASE}/${ARCHIVE} ..."
+curl -fsSL "${BASE}/${ARCHIVE}" -o "$TMP/${ARCHIVE}"
+tar -xzf "$TMP/${ARCHIVE}" -C "$TMP"
+
+mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
+found="$(find "$TMP" -type f -name rlm-mcp | head -n 1)"
+install -m 755 "$found" "$CONFIG_DIR/rlm-mcp"
+ln -sf "$CONFIG_DIR/rlm-mcp" "$INSTALL_DIR/rlm-mcp"
+
+skill="$(find "$TMP" -type f -name SKILL.md | head -n 1 || true)"
+if [ -n "$skill" ]; then
+  for target in \
+    "$HOME/.codex/skills/rlm" \
+    "$HOME/.claude/skills/rlm" \
+    "$HOME/.agents/skills/rlm" \
+    "$HOME/.config/opencode/skills/rlm"; do
+    mkdir -p "$target"
+    cp "$skill" "$target/SKILL.md"
+  done
+fi
+
+echo ""
+echo "Installed rlm-mcp ${VERSION} -> ${CONFIG_DIR}/rlm-mcp"
+echo "MCP command: [\"${CONFIG_DIR}/rlm-mcp\"]"
+if [ -n "${skill:-}" ]; then
+  echo "Installed rlm skill for Codex, Claude Code, OpenCode, and agents."
+fi

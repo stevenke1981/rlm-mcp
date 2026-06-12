@@ -60,10 +60,18 @@ rlm_workflow(phase="reduce")
 |------|------|
 | Workflow help | `rlm_workflow` |
 | Load context | `rlm_scan` |
+| Inspect session | `rlm_env_info` |
 | Filter/search | `rlm_peek` |
+| Slice/transform | `rlm_slice`, `rlm_transform` |
+| Artifacts | `rlm_artifact_write`, `rlm_artifact_read` |
 | Read chunks | `rlm_chunk` |
+| Parallel map | `rlm_map_plan`, `rlm_map_claim`, `rlm_map_complete` |
+| Reduce | `rlm_reduce_schema`, `rlm_reduce_merge` |
+| Recursive tasks | `rlm_task_create`, `rlm_task_list`, `rlm_task_result`, `rlm_task_reduce`, `rlm_task_cancel` |
+| Budget/trajectory | `rlm_budget_configure`, `rlm_budget_status`, `rlm_trajectory_get`, `rlm_trajectory_final` |
 | List sessions | `rlm_session_list` |
-| Delete session | `rlm_session_delete` |
+| Session maintenance | `rlm_session_delete`, `rlm_session_cleanup`, `rlm_session_export`, `rlm_session_import` |
+| Benchmarks/reference | `rlm_benchmark_list`, `rlm_benchmark_run`, `rlm_tools_reference` |
 
 ## Rules
 

@@ -25,6 +25,30 @@ Binary: `target\release\rlm-mcp.exe` (Windows) or `target/release/rlm-mcp` (Unix
 
 ## Install
 
+### From GitHub Release
+
+Windows:
+
+```powershell
+irm https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/windows/install.ps1 | iex
+```
+
+Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/linux/install.sh | bash
+```
+
+macOS Apple Silicon:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/macos/install.sh | bash
+```
+
+The release installer verifies `SHA256SUMS.txt`, installs the binary to a stable path, and prints the MCP command.
+
+### From source checkout
+
 ### Windows
 
 ```powershell
