@@ -803,7 +803,12 @@ pub fn tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "properties": {
                     "suite": { "type": "string", "default": "sniah", "enum": ["sniah"] },
-                    "fixture_size": { "type": "string", "default": "mini", "enum": ["mini", "small"] }
+                    "fixture_size": {
+                        "type": "string",
+                        "default": "mini",
+                        "enum": ["mini", "small", "large", "nightly"],
+                        "description": "mini=CI; small/large/nightly are optional local or scheduled runs"
+                    }
                 }
             }),
         ),

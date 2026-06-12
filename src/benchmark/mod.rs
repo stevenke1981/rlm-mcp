@@ -15,7 +15,10 @@ pub fn list_suites() -> Value {
                 "id": "sniah",
                 "name": "S-NIAH (Synthetic Needle In A Haystack)",
                 "description": "Buried key-value needle in synthetic haystack; compares direct, compaction, peek, and RLM baselines.",
-                "fixture_sizes": ["mini", "small"],
+                "fixture_sizes": ["mini", "small", "large", "nightly"],
+                "ci_fixture_sizes": ["mini"],
+                "optional_fixture_sizes": ["small", "large", "nightly"],
+                "nightly_fixture_sizes": ["large", "nightly"],
                 "ci_default": "mini",
                 "baselines": BaselineKind::all()
                     .iter()

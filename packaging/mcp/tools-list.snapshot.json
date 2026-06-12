@@ -66,9 +66,12 @@
         "properties": {
           "fixture_size": {
             "default": "mini",
+            "description": "mini=CI; small/large/nightly are optional local or scheduled runs",
             "enum": [
               "mini",
-              "small"
+              "small",
+              "large",
+              "nightly"
             ],
             "type": "string"
           },

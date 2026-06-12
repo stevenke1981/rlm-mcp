@@ -276,7 +276,7 @@ Optional filters: `session_id` (`--session-id`), `root_id` (`--root-id`).
 
 ### `rlm_benchmark_list`
 
-Lists offline suites (S-NIAH mini/small). CLI: `rlm-mcp benchmark list --json`.
+Lists offline suites (S-NIAH `mini`/`small`/`large`/`nightly`). CLI: `rlm-mcp benchmark list --json`.
 
 ### `rlm_benchmark_run`
 

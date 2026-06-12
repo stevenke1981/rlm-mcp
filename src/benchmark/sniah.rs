@@ -7,10 +7,12 @@ use regex::Regex;
 use serde_json::json;
 use std::time::Instant;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SniahSize {
     Mini,
     Small,
+    Large,
+    Nightly,
 }
 
 impl SniahSize {
@@ -18,14 +20,34 @@ impl SniahSize {
         match s.to_lowercase().as_str() {
             "mini" => Some(Self::Mini),
             "small" => Some(Self::Small),
+            "large" => Some(Self::Large),
+            "nightly" => Some(Self::Nightly),
             _ => None,
         }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Mini, Self::Small, Self::Large, Self::Nightly]
+    }
+
+    pub fn label(self) -> &'static str {
+        size_label(self)
+    }
+
+    pub fn is_ci_default(self) -> bool {
+        matches!(self, Self::Mini)
+    }
+
+    pub fn is_optional(self) -> bool {
+        !self.is_ci_default()
     }
 
     fn filler_lines(self) -> usize {
         match self {
             Self::Mini => 40,
             Self::Small => 200,
+            Self::Large => 2_000,
+            Self::Nightly => 8_000,
         }
     }
 }
@@ -72,6 +94,8 @@ fn size_label(size: SniahSize) -> &'static str {
     match size {
         SniahSize::Mini => "mini",
         SniahSize::Small => "small",
+        SniahSize::Large => "large",
+        SniahSize::Nightly => "nightly",
     }
 }
 
@@ -420,5 +444,18 @@ mod tests {
         let f = generate_fixture(SniahSize::Mini);
         assert!(f.haystack.contains(&f.needle_line));
         assert!(extract_needle_value(&f.haystack, &f.needle_key).is_some());
+    }
+
+    #[test]
+    fn optional_fixture_sizes_scale_haystack() {
+        let mini = generate_fixture(SniahSize::Mini);
+        let small = generate_fixture(SniahSize::Small);
+        let large = generate_fixture(SniahSize::Large);
+        let nightly = generate_fixture(SniahSize::Nightly);
+
+        assert!(mini.haystack.len() < small.haystack.len());
+        assert!(small.haystack.len() < large.haystack.len());
+        assert!(large.haystack.len() < nightly.haystack.len());
+        assert!(nightly.haystack.lines().count() > 15_000);
     }
 }

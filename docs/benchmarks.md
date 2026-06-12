@@ -15,7 +15,7 @@ rlm-mcp benchmark-list --json
 
 | Suite | Status | CI default | Fixture sizes |
 |-------|--------|------------|---------------|
-| `sniah` | **Runnable** | `mini` | `mini`, `small` |
+| `sniah` | **Runnable** | `mini` | `mini`, `small`, `large`, `nightly` |
 | `browsecomp_plus` | Planned | — | — |
 | `oolong` | Planned | — | — |
 | `oolong_pairs` | Planned | — | — |
@@ -33,6 +33,8 @@ rlm-mcp benchmark-list --json
 |------|-----------------------------------|-------------|
 | `mini` | 40 | CI, fast local check |
 | `small` | 200 | Local regression, slightly harder |
+| `large` | 2,000 | Local stress / tail-cost inspection |
+| `nightly` | 8,000 | Scheduled nightly workflow only |
 
 Needle is placed at the **middle line** — compaction baselines that only read head/tail miss it by design.
 
@@ -100,6 +102,9 @@ rlm-mcp benchmark-run --suite sniah --fixture-size mini --json
 
 # Larger local run
 rlm-mcp benchmark-run --suite sniah --fixture-size small --json
+
+# Stress run (optional; slower)
+rlm-mcp benchmark-run --suite sniah --fixture-size large --json
 ```
 
 ### MCP
@@ -112,6 +117,19 @@ rlm-mcp benchmark-run --suite sniah --fixture-size small --json
 
 ```powershell
 cargo test --test benchmark_sniah
+```
+
+### Optional local / nightly fixtures
+
+```powershell
+# Local regression (ignored in CI)
+cargo test sniah_small_suite --test benchmark_sniah -- --ignored
+
+# Large stress fixtures
+cargo test sniah_large_suite --test benchmark_sniah -- --ignored
+
+# Nightly-scale fixtures (also run on schedule via .github/workflows/nightly.yml)
+cargo test sniah_nightly_suite --test benchmark_sniah -- --ignored
 ```
 
 Assertions in `sniah_mini_suite_runs_all_baselines`:
@@ -139,7 +157,7 @@ Assertions in `sniah_mini_suite_runs_all_baselines`:
 - BrowseComp-Plus, OOLONG, OOLONG-Pairs, CodeQA task families (adapters planned).
 - True BM25 / CodeAct baselines from the paper.
 - Live model quality across providers (only `mock` in harness).
-- Large-scale tail latency distributions (use `small` + manual runs; nightly fixtures planned).
+- Large-scale tail latency distributions (use `large` / `nightly` + budget/trajectory tools).
 
 ---
 

@@ -275,7 +275,7 @@ Acceptance criteria:
   - OOLONG-Pairs-like pairwise aggregation task
   - CodeQA-style repository understanding task
 - [x] Add small synthetic fixtures that can run in CI.
-- [ ] Add large optional fixtures for local/nightly runs.
+- [x] Add large optional fixtures for local/nightly runs (`large`, `nightly`; `.github/workflows/nightly.yml`).
 - [x] Implement baselines:
   - direct full-context call where possible
   - summary/compaction agent

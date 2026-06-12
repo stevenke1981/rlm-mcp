@@ -134,8 +134,8 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 
 | Paper benchmark | rlm-mcp adapter | Status | Tests / examples |
 |-----------------|-----------------|--------|------------------|
-| **S-NIAH** | `src/benchmark/sniah.rs`, `rlm_benchmark_run` suite `sniah` | **Done** | `tests/benchmark_sniah.rs`, CI `mini` fixture |
-| BrowseComp-Plus-like | Listed in `rlm_benchmark_list` → `planned` | **Planned** | TODO P1 large optional fixtures |
+| **S-NIAH** | `src/benchmark/sniah.rs`, `rlm_benchmark_run` suite `sniah` | **Done** | `tests/benchmark_sniah.rs`, CI `mini`; optional `large`/`nightly` |
+| BrowseComp-Plus-like | Listed in `rlm_benchmark_list` → `planned` | **Planned** | — |
 | OOLONG / OOLONG-Pairs | `planned` in `list_suites()` | **Planned** | — |
 | CodeQA-style repo QA | `planned` | **Planned** | Examples outline in `rlm-loop.md` (no harness yet) |
 
@@ -200,7 +200,7 @@ Priority gaps that prevent calling the repo “paper-complete”:
 | Priority | Item |
 |----------|------|
 | P2 | Safe temp directory handling; executable REPL sandbox backends |
-| P1 | Large benchmark fixtures; provider dollar cost |
+| P1 | BrowseComp/OOLONG/CodeQA adapters (large S-NIAH fixtures shipped) |
 | P2 | OpenAI-compatible provider; GitHub release workflow; release artifact smoke |
 | P3 | — (limitations + benchmarks docs shipped) |
 
