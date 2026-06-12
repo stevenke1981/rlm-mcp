@@ -1,13 +1,10 @@
 # codebase-memory-rlm-mcp
 
-Standalone **RLM (Recursive Language Model)** MCP server in **Rust**. Orchestrates map-reduce workflows by calling **codebase-memory-mcp** for graph operations.
+Standalone **RLM (Recursive Language Model)** MCP server in **Rust**.
 
-**Not a fork of CBM** — runs alongside the graph server via MCP stdio client.
+Implements the [MIT CSAIL paper](https://arxiv.org/pdf/2512.24601) pattern: **context is external** — load long text into sessions, filter with peek, map with paginated chunks, reduce in the agent.
 
-## Requires
-
-- **[codebase-memory-mcp](https://github.com/stevenke1981/cbm-mcp)** installed and on PATH (or `CBM_BINARY` set)
-- Indexed project (`index_repository` via CBM)
+**Independent project** — no dependency on codebase-memory-mcp or any graph index.
 
 ## Build
 
@@ -32,25 +29,14 @@ Unix:
 ./install.sh
 ```
 
-## MCP configuration (both servers)
+## MCP configuration
 
 ```json
 {
-  "mcp": {
-    "codebase-memory-mcp": {
-      "type": "local",
-      "command": ["codebase-memory-mcp"],
-      "enabled": true
-    },
-    "codebase-memory-rlm-mcp": {
-      "type": "local",
-      "command": ["D:\\rlm-mcp\\target\\release\\codebase-memory-rlm-mcp.exe"],
-      "enabled": true,
-      "environment": {
-        "CBM_PROJECT": "your-project-name",
-        "CBM_BINARY": "D:\\cbm-mcp\\target\\release\\codebase-memory-mcp.exe"
-      }
-    }
+  "codebase-memory-rlm-mcp": {
+    "type": "local",
+    "command": ["D:\\rlm-mcp\\target\\release\\codebase-memory-rlm-mcp.exe"],
+    "enabled": true
   }
 }
 ```
@@ -59,28 +45,35 @@ Unix:
 
 | Variable | Purpose |
 |----------|---------|
-| `CBM_BINARY` | Path to `codebase-memory-mcp` executable |
-| `CBM_COMMAND` | Space-separated launch command (alternative to `CBM_BINARY`) |
-| `CBM_PROJECT` | Default project name (normalized to `cbm+` prefix) |
 | `RLM_CACHE_DIR` | Session cache root (default: `%LOCALAPPDATA%\codebase-memory-rlm-mcp`) |
 
-## RLM tools
+## RLM loop
 
-`rlm_workflow`, `rlm_index_status`, `rlm_filter`, `rlm_read_symbol`, `rlm_trace`, `rlm_architecture`, `rlm_detect_changes`, `rlm_scan`, `rlm_chunk`, `rlm_peek`, `rlm_session_list`, `rlm_session_delete`
+| Phase | Tool | Purpose |
+|-------|------|---------|
+| Load | `rlm_scan` | Load path into session; get metadata |
+| Filter | `rlm_peek` | Substring/path search without full read |
+| Map | `rlm_chunk` | Paginated chunk reads (parallel workers) |
+| Reduce | (agent) | Merge worker JSON into final answer |
+| Help | `rlm_workflow` | Phase guidance |
+
+Also: `rlm_session_list`, `rlm_session_delete`
 
 ## Architecture
 
 ```
-Agent → codebase-memory-rlm-mcp (RLM tools)
-              ↓ MCP stdio per graph call
-        codebase-memory-mcp (graph index)
+Agent (LLM plans filter/map/reduce)
+    ↓ MCP stdio
+codebase-memory-rlm-mcp
+    ↓ local sessions (RLM_CACHE_DIR/rlm-sessions)
+External files / logs / docs
 ```
 
-Local scan sessions (`rlm_scan` / `rlm_chunk` / `rlm_peek`) persist under `RLM_CACHE_DIR/rlm-sessions`.
+## Related projects
 
-## Repo layout
+| Repo | Role |
+|------|------|
+| [rlm-mcp](https://github.com/stevenke1981/rlm-mcp) | **This repo** — standalone RLM |
+| [cbm-mcp](https://github.com/stevenke1981/cbm-mcp) | Optional separate graph MCP (not required) |
 
-| Repo | Responsibility |
-|------|----------------|
-| [cbm-mcp](https://github.com/stevenke1981/cbm-mcp) | Graph index + 14 CBM tools |
-| [rlm-mcp](https://github.com/stevenke1981/rlm-mcp) | RLM workflow + chunk/peek (this repo) |
+Use both MCP servers in the same agent only if you want graph search **and** RLM sessions — they are separate processes with no code coupling.

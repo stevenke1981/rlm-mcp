@@ -66,7 +66,7 @@ impl McpServer {
                 "name": SERVER_NAME,
                 "version": SERVER_VERSION
             },
-            "instructions": "codebase-memory-rlm-mcp RLM orchestrator. Requires codebase-memory-mcp for graph tools. Loop: rlm_workflow → rlm_filter → rlm_read_symbol/rlm_trace → reduce."
+            "instructions": "Standalone RLM MCP server. External context via rlm_scan sessions. Loop: load → filter (rlm_peek) → map (rlm_chunk) → reduce. Independent of any graph index."
         })
     }
 
@@ -140,7 +140,8 @@ mod tests {
         });
         let resp = server.handle_message(&req.to_string()).unwrap().unwrap();
         assert!(resp.contains("rlm_workflow"));
-        assert!(resp.contains("rlm_filter"));
+        assert!(resp.contains("rlm_scan"));
+        assert!(!resp.contains("rlm_filter"));
         assert!(!resp.contains("index_repository"));
     }
 }

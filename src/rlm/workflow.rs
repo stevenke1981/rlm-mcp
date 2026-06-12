@@ -2,53 +2,69 @@ use serde_json::{json, Value};
 
 pub fn workflow_guidance(phase: &str) -> Value {
     match phase {
-        "filter" => json!({
-            "phase": "filter",
-            "description": "RLM Phase 1 — narrow context via graph search",
-            "tools": ["rlm_filter", "rlm_index_status", "search_graph", "search_code"],
+        "load" => json!({
+            "phase": "load",
+            "description": "RLM Phase 1 — load external context into a session",
+            "tools": ["rlm_scan", "rlm_session_list"],
             "steps": [
-                "index_repository via codebase-memory-mcp if not indexed",
-                "rlm_index_status then rlm_filter (query/label or pattern)",
-                "collect qualified_names for map phase"
+                "rlm_scan(path) — load files/logs/docs into session (returns session_id + metadata)",
+                "Inspect file_count, chunk_count, total_bytes before proceeding"
             ],
             "rules": [
-                "Never load 10+ files into root context",
-                "Prefer graph tools over rg when indexed"
+                "Never paste full file contents into root context",
+                "Context lives in the RLM session until deleted"
+            ]
+        }),
+        "filter" => json!({
+            "phase": "filter",
+            "description": "RLM Phase 2 — narrow candidates without loading everything",
+            "tools": ["rlm_peek", "rlm_chunk"],
+            "steps": [
+                "rlm_peek(session_id, query) — substring/path search across chunks",
+                "Note matching paths and chunk offsets for map phase"
+            ],
+            "rules": [
+                "Filter before reading large chunk ranges",
+                "Use specific queries (error codes, function names, log markers)"
             ]
         }),
         "map" => json!({
             "phase": "map",
-            "description": "RLM Phase 2 — parallel symbol reads",
-            "tools": ["rlm_read_symbol", "rlm_trace", "get_code_snippet", "rlm_chunk"],
+            "description": "RLM Phase 3 — read and process chunks in parallel",
+            "tools": ["rlm_chunk"],
             "steps": [
-                "rlm_read_symbol — one qualified_name per call",
-                "rlm_trace for call chains (direction=both, depth=3)",
-                "rlm_chunk for log/CSV blobs (non-code only)"
+                "rlm_chunk(session_id, file_pattern?, offset, limit) — paginated reads",
+                "Spawn parallel workers: one chunk batch per sub-task",
+                "Each worker returns structured JSON (findings, not raw dumps)"
             ],
             "rules": [
-                "One symbol per rlm_read_symbol call",
-                "Use rlm_trace before reading unrelated files"
+                "One focused sub-task per worker",
+                "Keep limit small (3–5 chunks per call)"
             ]
         }),
         "reduce" => json!({
             "phase": "reduce",
-            "description": "RLM Phase 3 — synthesize architecture summary",
-            "tools": ["rlm_architecture", "rlm_detect_changes", "get_architecture"],
+            "description": "RLM Phase 4 — synthesize final answer from worker outputs",
+            "tools": ["rlm_peek", "rlm_chunk"],
             "steps": [
-                "rlm_architecture for project overview",
-                "rlm_detect_changes for git delta",
-                "Reduce to structured JSON before final answer"
+                "Merge worker JSON into a single structured result",
+                "If gaps remain, run another filter → map pass on missing areas only",
+                "Produce final answer only after reduce"
+            ],
+            "rules": [
+                "Do not re-read entire session at reduce time",
+                "Second recursion only for proven gaps"
             ]
         }),
         _ => json!({
             "phase": "overview",
-            "description": "Recursive Language Model workflow for large codebases",
+            "description": "Recursive Language Model — external context, programmatic access",
             "paper": "https://arxiv.org/pdf/2512.24601",
-            "phases": ["filter", "map", "reduce"],
-            "prerequisite": "index_repository via codebase-memory-mcp",
-            "project_naming": "CBM indexes use cbm+ prefix (set CBM_PROJECT or pass project)",
-            "requires": "codebase-memory-mcp binary (CBM_BINARY or PATH)",
-            "loop": "filter → map (parallel) → reduce"
+            "phases": ["load", "filter", "map", "reduce"],
+            "loop": "load → filter → map (parallel) → reduce",
+            "standalone": true,
+            "core_tools": ["rlm_workflow", "rlm_scan", "rlm_peek", "rlm_chunk", "rlm_session_list", "rlm_session_delete"],
+            "principle": "Context is external. LLM orchestrates via MCP tools — no bulk context loading."
         }),
     }
 }

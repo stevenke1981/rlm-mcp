@@ -2,10 +2,6 @@
   "codebase-memory-rlm-mcp": {
     "command": ["D:\\rlm-mcp\\target\\release\\codebase-memory-rlm-mcp.exe"],
     "enabled": true,
-    "timeout": 120000,
-    "environment": {
-      "CBM_PROJECT": "your-project-name",
-      "CBM_BINARY": "D:\\cbm-mcp\\target\\release\\codebase-memory-mcp.exe"
-    }
+    "timeout": 120000
   }
 }

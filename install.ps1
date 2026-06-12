@@ -41,7 +41,5 @@ Write-Host "Binary installed: $BinDir\codebase-memory-rlm-mcp.exe" -ForegroundCo
 Write-Host ""
 Write-Host "Add to agent MCP config:" -ForegroundColor DarkGray
 Write-Host "  command: [\"$BinDir\codebase-memory-rlm-mcp.exe\"]" -ForegroundColor DarkGray
-Write-Host '  env: { "CBM_PROJECT": "your-project", "CBM_BINARY": "path\to\codebase-memory-mcp.exe" }' -ForegroundColor DarkGray
-Write-Host ""
-Write-Host "Requires codebase-memory-mcp running separately." -ForegroundColor Yellow
+Write-Host "Standalone RLM server — no other MCP dependency required." -ForegroundColor DarkGray
 Write-Host ""

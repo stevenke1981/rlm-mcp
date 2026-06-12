@@ -2,7 +2,7 @@
 name = "codebase-memory-rlm-mcp"
 version = "0.1.0"
 edition = "2021"
-description = "codebase-memory-rlm-mcp — Rust RLM orchestration MCP server (calls codebase-memory-mcp)"
+description = "codebase-memory-rlm-mcp — standalone Rust RLM MCP server (external context sessions)"
 license = "MIT"
 authors = ["RLM Contributors"]
 keywords = ["mcp", "rlm", "codebase", "codebase-memory-rlm-mcp"]

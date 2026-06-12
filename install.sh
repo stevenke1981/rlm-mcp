@@ -50,8 +50,7 @@ echo ""
 echo -e "${GRAY}Add to your agent MCP config:${NC}"
 echo -e '${GRAY}  "codebase-memory-rlm-mcp": {'
 echo -e '${GRAY}    "command": ["'"$CONFIG_BIN/codebase-memory-rlm-mcp"'"],'
-echo -e '${GRAY}    "env": { "CBM_PROJECT": "your-project" }'
 echo -e '${GRAY}  }${NC}'
 echo ""
-echo -e "${GRAY}Requires codebase-memory-mcp running separately.${NC}"
+echo -e "${GRAY}Standalone RLM server — no other MCP dependency required.${NC}"
 echo ""
