@@ -90,6 +90,8 @@ Full parameter reference: [`docs/tools.md`](docs/tools.md)
 
 Walkthrough and examples: [`docs/rlm-loop.md`](docs/rlm-loop.md), [`examples/`](examples/)
 
+Paper ↔ implementation map: [`docs/paper-mapping.md`](docs/paper-mapping.md)
+
 ## CLI (non-MCP)
 
 Run without args to start MCP stdio server. With a subcommand, outputs JSON:

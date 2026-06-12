@@ -403,7 +403,7 @@ Acceptance criteria:
 
 ## P3 - Documentation matching the paper
 
-- [ ] Add `docs/paper-mapping.md`:
+- [x] Add `docs/paper-mapping.md`:
   - paper concept
   - Rust/MCP implementation
   - status
