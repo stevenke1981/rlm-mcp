@@ -104,7 +104,7 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 |---------------|---------------------------|--------|------------------|
 | Explicit sub-task tree (prompt + snippets + budget) | `rlm_task_create`, `rlm_task_list`, `rlm_task_result`, `rlm_task_reduce` (`src/rlm/task.rs`) | **Done** | `tests/rlm_e2e.rs` recursive fixture |
 | Agent-managed recursion (no provider) | Default; `provider` omitted or external | **Done** | workflow guidance |
-| Provider-backed sub-calls | `SubModelProvider` trait (`src/rlm/provider.rs`) | **Partial** | `mock`, `dry-run` only; OpenAI/local **Planned** (P2) |
+| Provider-backed sub-calls | `SubModelProvider` trait (`src/rlm/provider/`) | **Partial** | `mock`, `dry-run`, `command`, `openai` (opt-in via `RLM_ALLOW_NETWORK`) |
 | Recursion limits (depth, fanout, subcalls, bytes) | Task tree + `src/rlm/budget.rs` | **Done** | `src/rlm/task.rs`, budget tests |
 | Wall time + cancellation | `rlm_task_cancel`, budget fail-fast | **Done** | `src/rlm/budget.rs` tests |
 | Cycle / duplicate detection | Task tree dedup in `task.rs` | **Done** | task unit tests |

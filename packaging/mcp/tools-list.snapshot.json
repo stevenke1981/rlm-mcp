@@ -381,7 +381,7 @@
       "name": "rlm_task_cancel"
     },
     {
-      "description": "Create a recursive sub-task over session chunks (mock/dry-run provider for offline tests).",
+      "description": "Create a recursive sub-task over session chunks (mock/dry-run/command/openai providers).",
       "inputSchema": {
         "properties": {
           "budget": {
@@ -429,7 +429,9 @@
             "default": "mock",
             "enum": [
               "mock",
-              "dry-run"
+              "dry-run",
+              "command",
+              "openai"
             ],
             "type": "string"
           },

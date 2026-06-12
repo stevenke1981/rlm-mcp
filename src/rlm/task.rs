@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use crate::rlm::budget::{self, BudgetMode};
-use crate::rlm::provider::{resolve_provider, ProviderResult};
+use crate::rlm::provider::{resolve_provider, sanitize_result, ProviderResult};
 use crate::rlm::session::SessionStore;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -206,14 +206,8 @@ impl TaskStore {
 
     fn execute_task(&self, task: &RlmTask, context: &str) -> Result<ProviderResult> {
         let provider = resolve_provider(&task.provider)?;
-        let mut result = provider.invoke(&task.prompt, context)?;
-        result.structured = json!({
-            "task_id": task.id,
-            "provider": result.provider,
-            "output": result.output,
-            "findings": result.structured.get("findings").cloned().unwrap_or_else(|| json!([])),
-            "structured": result.structured,
-        });
+        let mut result = sanitize_result(provider.invoke(&task.prompt, context)?);
+        result.structured = sanitize_structured_task_result(&result, task);
         Ok(result)
     }
 
@@ -380,6 +374,18 @@ fn task_fingerprint(prompt: &str, chunk_ids: &[String]) -> String {
     let mut ids = chunk_ids.to_vec();
     ids.sort();
     format!("{}::{}", prompt.trim(), ids.join(","))
+}
+
+fn sanitize_structured_task_result(result: &ProviderResult, task: &RlmTask) -> Value {
+    json!({
+        "task_id": task.id,
+        "provider": result.provider,
+        "output": result.output,
+        "findings": result.structured.get("findings").cloned().unwrap_or_else(|| json!([])),
+        "usage": result.usage,
+        "cost_usd_est": result.cost_usd_est,
+        "structured": result.structured,
+    })
 }
 
 fn task_summary(task: &RlmTask) -> Value {

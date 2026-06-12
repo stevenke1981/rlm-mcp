@@ -54,8 +54,8 @@ See also: [`examples/bad-prompt-stuffing.md`](../examples/bad-prompt-stuffing.md
 |----------|--------|-----|
 | `mock` | Shipped | Deterministic CI / offline tests |
 | `dry-run` | Shipped | Plan sub-calls without token spend |
-| OpenAI-compatible | **Not shipped** (P2) | — |
-| Local command | **Not shipped** (P2) | — |
+| OpenAI-compatible | Shipped (opt-in) | `RLM_ALLOW_NETWORK=1` + `RLM_OPENAI_API_KEY` |
+| Local command | Shipped | `RLM_PROVIDER_COMMAND` (+ optional `RLM_PROVIDER_ARGS`) |
 
 - Default integration path: **host agent** plans filter/map/reduce; long text never leaves the session unless you explicitly chunk or call a provider.
 - `rlm_task_*` with `provider: mock` proves the recursion *protocol*, not production model quality.

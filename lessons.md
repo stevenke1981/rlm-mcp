@@ -47,3 +47,9 @@
 **Trigger:** Cross-process session reads failed when a second `SessionStore` was created before the first write finished.
 **Rule:** Use `get_or_hydrate` on read paths and tombstone+per-session lock on writes; never assume in-memory map is complete across MCP/CLI invocations.
 **Source:** P1 session storage and concurrency
+
+---
+## Lesson #9 — 2026-06-12
+**Trigger:** `tools_list_matches_snapshot` failed after expanding `rlm_task_create` provider enum without refreshing the packaging snapshot.
+**Rule:** After changing MCP tool schemas, run `cargo test write_tools_snapshot -- --ignored` and commit `packaging/mcp/tools-list.snapshot.json` in the same commit.
+**Source:** P2 provider abstraction

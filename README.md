@@ -98,6 +98,15 @@ cargo build --release
 | `RLM_MAX_SESSIONS` | `50` | Max persisted sessions |
 | `RLM_SESSION_TTL_SECS` | `3600` | Session expiry |
 | `RLM_CHUNK_LINES` | `200` | Lines per chunk |
+| `RLM_ALLOW_NETWORK` | unset (offline) | Set to `1` to enable `openai` provider |
+| `RLM_OPENAI_API_KEY` | — | OpenAI-compatible API key (never persisted) |
+| `RLM_OPENAI_BASE_URL` | `https://api.openai.com/v1` | Compatible API base URL |
+| `RLM_OPENAI_MODEL` | `gpt-4o-mini` | Model name for sub-calls |
+| `RLM_PROVIDER_COMMAND` | — | Executable for `command` provider |
+| `RLM_PROVIDER_ARGS` | `[]` | JSON array or whitespace-separated args |
+| `RLM_PROVIDER_MAX_RETRIES` | `3` | Provider retry attempts |
+| `RLM_OPENAI_PROMPT_COST_PER_1K` | — | Optional USD/1K prompt tokens for cost est. |
+| `RLM_OPENAI_COMPLETION_COST_PER_1K` | — | Optional USD/1K completion tokens |
 
 ## RLM loop
 
@@ -107,7 +116,7 @@ cargo build --release
 | Filter | `rlm_peek`, `rlm_slice` | Narrow candidates (substring, glob, regex, line range) |
 | Map | `rlm_chunk`, `rlm_map_plan` | Paginated chunk reads; parallel work batches |
 | Reduce | `rlm_reduce_schema`, `rlm_reduce_merge` | Merge worker JSON; decide if recursion needed |
-| Recurse | `rlm_task_create`, `rlm_task_list`, `rlm_task_result`, `rlm_task_reduce` | Sub-tasks with mock/dry-run provider |
+| Recurse | `rlm_task_create`, `rlm_task_list`, `rlm_task_result`, `rlm_task_reduce` | Sub-tasks (`mock`/`dry-run` offline; `command`/`openai` opt-in) |
 | Observe | `rlm_trajectory_get`, `rlm_trajectory_final`, `rlm_budget_status` | Trajectory + budget/tail-cost reporting |
 | Control | `rlm_budget_configure`, `rlm_task_cancel` | Session limits, fail-fast/soft-warning, cancel trees |
 | Help | `rlm_workflow`, `rlm_tools_reference` | Phase guidance + full tool schema |

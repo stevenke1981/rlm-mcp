@@ -10,6 +10,7 @@ Contract snapshot: [`packaging/mcp/tools-list.snapshot.json`](../packaging/mcp/t
 - **CLI flags** use `kebab-case` (e.g. `--session-id`, `--chunk-id`). Repeat flags for arrays.
 - Append **`--json`** or **`--quiet`** on CLI for parseable stdout.
 - Offline tests use providers `mock` and `dry-run` only.
+- Live providers: `command` (local executable) and `openai` (requires `RLM_ALLOW_NETWORK=1` + `RLM_OPENAI_API_KEY`).
 
 ## Load phase
 
@@ -150,7 +151,7 @@ Returns worker JSON schema, final-answer schema, and reduce checklist. No argume
 | `prompt` | `--prompt` | required |
 | `chunk_ids` | `--chunk-id` | repeatable |
 | `parent_task_id` | `--parent-task-id` | for child tasks |
-| `provider` | `--provider` | `mock` (default) or `dry-run` |
+| `provider` | `--provider` | `mock` (default), `dry-run`, `command`, `openai` |
 | `execute` | `--no-execute` (inverted) | default true |
 | `budget` | — | MCP object: max_depth, fanout, subcalls, bytes, wall time |
 

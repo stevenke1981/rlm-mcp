@@ -355,13 +355,13 @@ Acceptance criteria:
 
 ## P2 - Provider abstraction
 
-- [ ] Add provider trait for sub-model calls.
-- [ ] Add mock provider for tests.
-- [ ] Add local command provider.
-- [ ] Add OpenAI-compatible provider behind env config.
-- [ ] Add retry/backoff.
-- [ ] Add token/cost estimation hooks.
-- [ ] Keep provider secrets out of session artifacts.
+- [x] Add provider trait for sub-model calls.
+- [x] Add mock provider for tests.
+- [x] Add local command provider.
+- [x] Add OpenAI-compatible provider behind env config.
+- [x] Add retry/backoff.
+- [x] Add token/cost estimation hooks.
+- [x] Keep provider secrets out of session artifacts.
 
 Acceptance criteria:
 
@@ -372,7 +372,7 @@ Acceptance criteria:
 - [ ] Add secret redaction for trajectory exports.
 - [ ] Add binary-file detection.
 - [ ] Add max output size for chunks and transform outputs.
-- [ ] Add explicit opt-in for network/provider calls.
+- [x] Add explicit opt-in for network/provider calls.
 - [ ] Add safe temp directory handling.
 - [ ] Add Windows path traversal tests.
 

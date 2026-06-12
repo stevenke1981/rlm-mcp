@@ -518,7 +518,7 @@ pub fn tool_definitions() -> Vec<Value> {
         ),
         tool_def(
             "rlm_task_create",
-            "Create a recursive sub-task over session chunks (mock/dry-run provider for offline tests).",
+            "Create a recursive sub-task over session chunks (mock/dry-run/command/openai providers).",
             json!({
                 "type": "object",
                 "required": ["session_id", "prompt"],
@@ -527,7 +527,7 @@ pub fn tool_definitions() -> Vec<Value> {
                     "prompt": { "type": "string" },
                     "chunk_ids": { "type": "array", "items": { "type": "string" } },
                     "parent_task_id": { "type": "string" },
-                    "provider": { "type": "string", "default": "mock", "enum": ["mock", "dry-run"] },
+                    "provider": { "type": "string", "default": "mock", "enum": ["mock", "dry-run", "command", "openai"] },
                     "execute": { "type": "boolean", "default": true },
                     "budget": {
                         "type": "object",
