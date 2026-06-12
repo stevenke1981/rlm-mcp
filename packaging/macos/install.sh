@@ -34,6 +34,20 @@ trap 'rm -rf "$TMP"' EXIT
 
 echo "Downloading ${BASE}/${ARCHIVE} ..."
 curl -fsSL "${BASE}/${ARCHIVE}" -o "$TMP/${ARCHIVE}"
+
+echo "Verifying checksum ..."
+curl -fsSL "${BASE}/SHA256SUMS.txt" -o "$TMP/SHA256SUMS.txt"
+expected="$(grep " ${ARCHIVE}$" "$TMP/SHA256SUMS.txt" | awk '{print $1}')"
+if [ -z "$expected" ]; then
+  echo "checksum for ${ARCHIVE} not found in SHA256SUMS.txt" >&2
+  exit 1
+fi
+actual="$(shasum -a 256 "$TMP/${ARCHIVE}" | awk '{print $1}')"
+if [ "$actual" != "$expected" ]; then
+  echo "checksum mismatch for ${ARCHIVE}" >&2
+  exit 1
+fi
+
 tar -xzf "$TMP/${ARCHIVE}" -C "$TMP"
 
 mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"

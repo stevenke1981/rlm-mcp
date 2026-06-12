@@ -14,14 +14,15 @@ Implements the [MIT CSAIL paper](https://arxiv.org/pdf/2512.24601) pattern: **co
 | Code graph, symbol lookup, call-path tracing | **cbm-mcp** (separate repo) |
 | Both long-context sessions and graph search | Run both MCP servers side by side — separate processes, no code coupling |
 
-## Build
+## Quick start
 
 ```powershell
 cd D:\rlm-mcp
-cargo build --release
+.\install.ps1
+rlm-mcp --version
 ```
 
-Binary: `target\release\rlm-mcp.exe` (Windows) or `target/release/rlm-mcp` (Unix).
+`install.ps1` / `install.sh` download the latest GitHub Release binary by default. Agents can install directly from a checkout without compiling Rust.
 
 ## Install
 
@@ -47,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging
 
 The release installer verifies `SHA256SUMS.txt`, installs the binary to a stable path, and prints the MCP command.
 
-### From source checkout
+### From checkout without compiling
 
 ### Windows
 
@@ -55,7 +56,7 @@ The release installer verifies `SHA256SUMS.txt`, installs the binary to a stable
 .\install.ps1
 ```
 
-Installs to `%USERPROFILE%\.config\rlm-mcp\bin\rlm-mcp.exe`
+Downloads the latest release archive, verifies `SHA256SUMS.txt`, installs to `%USERPROFILE%\.config\rlm-mcp\bin\rlm-mcp.exe`, and copies the `rlm` skill for Codex, Claude Code, OpenCode, and agents.
 
 ### Linux / macOS
 
@@ -65,6 +66,28 @@ chmod +x install.sh
 ```
 
 Installs to `~/.config/rlm-mcp/bin/rlm-mcp` and symlinks `~/.local/bin/rlm-mcp`.
+
+Pin a version:
+
+```powershell
+.\install.ps1 -Version v0.1.1
+```
+
+```bash
+RLM_VERSION=v0.1.1 ./install.sh
+```
+
+### Build from source checkout
+
+Only use this for development or local unreleased changes:
+
+```powershell
+.\install.ps1 -FromSource
+```
+
+```bash
+./install.sh --from-source
+```
 
 ### MCP configuration
 
@@ -206,7 +229,7 @@ External files / logs / docs / text blobs
 | `tools/list` test fails after adding tools | `cargo test write_tools_snapshot -- --ignored` then commit snapshot |
 | Session not found across processes | Same `RLM_CACHE_DIR`; use `rlm_session_list --json` |
 | Permission denied on cache dir | Set `RLM_CACHE_DIR` to a writable directory |
-| Windows build slow | `cargo build --release` once; re-install with `.\install.ps1 -SkipBuild` |
+| Windows build slow | Default install does not build; use `.\install.ps1` for release binary or `.\install.ps1 -FromSource -SkipBuild` after a local dev build |
 | Release smoke skipped | Run `cargo build --release` then `cargo test --test release_smoke --release` |
 
 ## Implementation roadmap

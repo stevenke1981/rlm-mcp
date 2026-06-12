@@ -1,13 +1,22 @@
-# Install rlm-mcp MCP server + rlm skill (Windows).
-# Idempotent: re-run safely; use -SkipBuild to copy existing release binary only.
+# Install rlm-mcp MCP server + rlm skill from GitHub Release by default (Windows).
+# Idempotent: re-run safely; use -FromSource only when developing this checkout.
 
 param(
+    [string]$Version = $(if ($env:RLM_VERSION) { $env:RLM_VERSION } else { "latest" }),
+    [switch]$FromSource,
     [switch]$SkipBuild
 )
 
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+if (-not $FromSource) {
+    $Script = Join-Path $ScriptDir "packaging\windows\install.ps1"
+    & $Script -Version $Version
+    exit $LASTEXITCODE
+}
+
 $SkillName = "rlm"
 $userHome = $env:USERPROFILE
 $BinDir = Join-Path $userHome ".config\rlm-mcp\bin"

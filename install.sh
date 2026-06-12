@@ -1,10 +1,24 @@
 #!/usr/bin/env bash
-# Install rlm-mcp MCP server + rlm skill.
-# Idempotent: re-run safely. Pass --skip-build to copy existing release binary only.
+# Install rlm-mcp MCP server + rlm skill from GitHub Release by default.
+# Idempotent: re-run safely. Use --from-source only when developing this checkout.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ "${1:-}" != "--from-source" ]]; then
+  case "$(uname -s)" in
+    Linux) exec bash "$SCRIPT_DIR/packaging/linux/install.sh" "$@" ;;
+    Darwin) exec bash "$SCRIPT_DIR/packaging/macos/install.sh" "$@" ;;
+    *)
+      echo "Unsupported OS for release install: $(uname -s)" >&2
+      echo "Use --from-source for source installs." >&2
+      exit 1
+      ;;
+  esac
+fi
+shift
+
 SKILL_NAME="rlm"
 BIN_DIR="$HOME/.local/bin"
 CONFIG_BIN="$HOME/.config/rlm-mcp/bin"

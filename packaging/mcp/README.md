@@ -17,15 +17,6 @@ CI compares live `tool_definitions()` against this file. Refresh after adding to
 cargo test write_tools_snapshot -- --ignored
 ```
 
-## Build
-
-```powershell
-cargo build --release
-```
-
-Windows: `target\release\rlm-mcp.exe`  
-Unix: `target/release/rlm-mcp`
-
 ## Install
 
 ```powershell
@@ -33,7 +24,7 @@ Unix: `target/release/rlm-mcp`
 ./install.sh    # Unix
 ```
 
-Copies binary to `~/.config/rlm-mcp/bin/` and installs the `rlm` skill.
+The checkout installer downloads the latest GitHub Release binary, verifies checksums, copies the binary to `~/.config/rlm-mcp/bin/`, and installs the `rlm` skill. It does not compile Rust. Use `.\install.ps1 -FromSource` or `./install.sh --from-source` only for local unreleased development.
 
 ## Manual config
 
