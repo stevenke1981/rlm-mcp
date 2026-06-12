@@ -3,7 +3,7 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/macos/install.sh | bash
-#   RLM_VERSION=v0.1.1 ./packaging/macos/install.sh
+#   RLM_VERSION=v0.1.2 ./packaging/macos/install.sh
 
 set -euo pipefail
 
@@ -54,6 +54,7 @@ mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
 found="$(find "$TMP" -type f -name rlm-mcp | head -n 1)"
 install -m 755 "$found" "$CONFIG_DIR/rlm-mcp"
 ln -sf "$CONFIG_DIR/rlm-mcp" "$INSTALL_DIR/rlm-mcp"
+"$CONFIG_DIR/rlm-mcp" install --json >/dev/null
 
 skill="$(find "$TMP" -type f -name SKILL.md | head -n 1 || true)"
 if [ -n "$skill" ]; then
@@ -69,7 +70,7 @@ fi
 
 echo ""
 echo "Installed rlm-mcp ${VERSION} -> ${CONFIG_DIR}/rlm-mcp"
-echo "MCP command: [\"${CONFIG_DIR}/rlm-mcp\"]"
+echo "OpenCode MCP configured: [\"${CONFIG_DIR}/rlm-mcp\"]"
 if [ -n "${skill:-}" ]; then
   echo "Installed rlm skill for Codex, Claude Code, OpenCode, and agents."
 fi

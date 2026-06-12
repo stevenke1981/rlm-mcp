@@ -46,7 +46,7 @@ macOS Apple Silicon:
 curl -fsSL https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/macos/install.sh | bash
 ```
 
-The release installer verifies `SHA256SUMS.txt`, installs the binary to a stable path, and prints the MCP command.
+The release installer verifies `SHA256SUMS.txt`, installs the binary to a stable path, and registers the OpenCode MCP entry automatically.
 
 ### From checkout without compiling
 
@@ -56,7 +56,7 @@ The release installer verifies `SHA256SUMS.txt`, installs the binary to a stable
 .\install.ps1
 ```
 
-Downloads the latest release archive, verifies `SHA256SUMS.txt`, installs to `%USERPROFILE%\.config\rlm-mcp\bin\rlm-mcp.exe`, and copies the `rlm` skill for Codex, Claude Code, OpenCode, and agents.
+Downloads the latest release archive, verifies `SHA256SUMS.txt`, installs to `%USERPROFILE%\.config\rlm-mcp\bin\rlm-mcp.exe`, registers OpenCode, and copies the `rlm` skill for Codex, Claude Code, OpenCode, and agents.
 
 ### Linux / macOS
 
@@ -70,11 +70,11 @@ Installs to `~/.config/rlm-mcp/bin/rlm-mcp` and symlinks `~/.local/bin/rlm-mcp`.
 Pin a version:
 
 ```powershell
-.\install.ps1 -Version v0.1.1
+.\install.ps1 -Version v0.1.2
 ```
 
 ```bash
-RLM_VERSION=v0.1.1 ./install.sh
+RLM_VERSION=v0.1.2 ./install.sh
 ```
 
 ### Build from source checkout
@@ -105,6 +105,8 @@ Templates: [`packaging/mcp/`](packaging/mcp/) (OpenCode, Codex, Claude, generic)
 ```
 
 Replace `command` with the absolute path from `install.ps1` / `install.sh`, or use `{{RLM_BINARY}}` in templates.
+
+The installer updates both existing `opencode.json` and `opencode.jsonc` files. This prevents a stale entry in one file from overriding the other.
 
 **Stable binary path:**
 

@@ -39,27 +39,14 @@ fn sha256_hex(path: &PathBuf) -> String {
 }
 
 fn write_mcp_frame(writer: &mut impl Write, body: &str) {
-    write!(writer, "Content-Length: {}\r\n\r\n{}", body.len(), body).unwrap();
+    writeln!(writer, "{body}").unwrap();
     writer.flush().unwrap();
 }
 
 fn read_mcp_frame(reader: &mut impl BufRead) -> String {
-    let mut content_length = None;
-    loop {
-        let mut line = String::new();
-        reader.read_line(&mut line).expect("read header");
-        if line.trim().is_empty() {
-            break;
-        }
-        let lower = line.to_lowercase();
-        if let Some(rest) = lower.strip_prefix("content-length:") {
-            content_length = rest.trim().parse().ok();
-        }
-    }
-    let len = content_length.expect("content-length header");
-    let mut body = vec![0u8; len];
-    reader.read_exact(&mut body).expect("read body");
-    String::from_utf8(body).expect("utf8 body")
+    let mut line = String::new();
+    reader.read_line(&mut line).expect("read JSON-RPC line");
+    line.trim_end().to_string()
 }
 
 #[test]

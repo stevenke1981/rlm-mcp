@@ -1,6 +1,6 @@
 [package]
 name = "rlm-mcp"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "rlm-mcp — standalone Rust RLM MCP server (external context sessions)"
 license = "MIT"

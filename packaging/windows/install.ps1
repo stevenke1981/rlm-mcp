@@ -2,7 +2,7 @@
 #
 # Usage:
 #   irm https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/windows/install.ps1 | iex
-#   $env:RLM_VERSION = "v0.1.1"; .\packaging\windows\install.ps1
+#   $env:RLM_VERSION = "v0.1.2"; .\packaging\windows\install.ps1
 
 param(
     [string]$Version = $(if ($env:RLM_VERSION) { $env:RLM_VERSION } else { "latest" }),
@@ -42,6 +42,7 @@ Expand-Archive -Path $ArchivePath -DestinationPath $Tmp -Force
 $Extracted = Get-ChildItem -Path $Tmp -Filter "rlm-mcp.exe" -Recurse | Select-Object -First 1
 if (-not $Extracted) { throw "rlm-mcp.exe not found in archive" }
 Copy-Item $Extracted.FullName (Join-Path $InstallDir "rlm-mcp.exe") -Force
+$InstalledBinary = Join-Path $InstallDir "rlm-mcp.exe"
 
 $Skill = Get-ChildItem -Path $Tmp -Filter "SKILL.md" -Recurse | Select-Object -First 1
 if ($Skill) {
@@ -64,7 +65,10 @@ if ($userPath -notlike "*$InstallDir*") {
     Write-Host "Added $InstallDir to user PATH"
 }
 
+& $InstalledBinary install --json
+if ($LASTEXITCODE -ne 0) { throw "rlm-mcp OpenCode configuration failed" }
+
 Write-Host ""
-Write-Host "Installed rlm-mcp $Version -> $InstallDir\rlm-mcp.exe" -ForegroundColor Green
-Write-Host "MCP command: [\"$InstallDir\rlm-mcp.exe\"]"
+Write-Host "Installed rlm-mcp $Version -> $InstalledBinary" -ForegroundColor Green
+Write-Host "OpenCode MCP configured: [\"$InstalledBinary\"]"
 if ($Skill) { Write-Host "Installed rlm skill for Codex, Claude Code, OpenCode, and agents." }

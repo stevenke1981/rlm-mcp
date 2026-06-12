@@ -51,6 +51,7 @@ chmod +x "$CONFIG_BIN/rlm-mcp"
 mkdir -p "$BIN_DIR"
 ln -sf "$CONFIG_BIN/rlm-mcp" "$BIN_DIR/rlm-mcp" 2>/dev/null || cp "$CONFIG_BIN/rlm-mcp" "$BIN_DIR/rlm-mcp"
 echo -e "${GREEN}  ✓ Binary → ${CONFIG_BIN}/rlm-mcp${NC}"
+"$CONFIG_BIN/rlm-mcp" install --json >/dev/null
 
 install_skill() {
   local target_dir="$1"
@@ -70,7 +71,7 @@ install_skill "$HOME/.config/opencode/skills/$SKILL_NAME" "OpenCode (~/.config/o
 echo ""
 echo -e "${GREEN}Binary installed: ${CONFIG_BIN}/rlm-mcp${NC}"
 echo ""
-echo -e "${GRAY}Add to agent MCP config (or copy from packaging/mcp/):${NC}"
+echo -e "${GRAY}OpenCode MCP configured automatically:${NC}"
 echo -e '${GRAY}  "rlm-mcp": {'
 echo -e '${GRAY}    "command": ["'"$CONFIG_BIN/rlm-mcp"'"],'
 echo -e '${GRAY}    "enabled": true'

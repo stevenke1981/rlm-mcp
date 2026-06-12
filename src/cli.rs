@@ -8,7 +8,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
     if args.is_empty() {
         return Err(Error::InvalidArgument(
             "usage: rlm-mcp <command> [options]\n\
-             commands: scan, peek, chunk, env-info, slice, transform, repl-info, repl-exec, artifact-write, artifact-read, \
+             commands: install, scan, peek, chunk, env-info, slice, transform, repl-info, repl-exec, artifact-write, artifact-read, \
              map-plan, map-claim, map-complete, reduce-schema, reduce-merge, \
              session-list, session-delete, session-cleanup, session-export, session-import, \
              task-create, task-list, task-result, task-reduce, \
@@ -24,6 +24,16 @@ pub fn run_cli(args: &[String]) -> Result<()> {
     let engine = RlmEngine::new();
 
     let result = match command {
+        "install" => {
+            let binary = std::env::current_exe()?;
+            let configured = crate::install::configure_opencode(&binary)?;
+            json!({
+                "installed": true,
+                "binary": binary,
+                "configured": configured,
+                "restart_required": true
+            })
+        }
         "scan" => {
             let path = flags.get_str("path");
             let content = flags
