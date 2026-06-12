@@ -251,8 +251,8 @@ Acceptance criteria:
   - sub-call count
   - recursion depth
   - elapsed time
-- [ ] Track:
-  - provider cost if configured
+- [x] Track:
+  - provider cost if configured (`provider_cost_usd_est` in `rlm_budget_status`)
 - [x] Add budget configuration:
   - per session
   - per task
@@ -380,7 +380,7 @@ Acceptance criteria:
 - [x] Add max output size for transform and artifact outputs.
 - [x] Add max output size for chunk reads (`RLM_MAX_CHUNK_BYTES`).
 - [x] Add explicit opt-in for network/provider calls.
-- [ ] Add safe temp directory handling.
+- [x] Add safe temp directory handling (`src/project.rs`: dedicated layout, traversal/temp guards).
 - [x] Add Windows path traversal tests (`tests/path_safety.rs`).
 
 Acceptance criteria:

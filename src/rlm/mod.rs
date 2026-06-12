@@ -40,6 +40,7 @@ pub struct RlmEngine {
 
 impl RlmEngine {
     pub fn new() -> Self {
+        let _ = crate::project::init_cache();
         Self {
             sessions: Arc::new(Mutex::new(SessionStore::new())),
             tasks: Arc::new(Mutex::new(task::TaskStore::new())),

@@ -265,6 +265,8 @@ fn aggregate_task_trees(trees: &[&TaskTree]) -> Value {
     let mut cancelled = 0u64;
     let mut input_tokens = 0u64;
     let mut output_tokens = 0u64;
+    let mut provider_cost_usd_est = 0.0f64;
+    let mut cost_samples = 0u64;
     for tree in trees {
         if tree.cancelled {
             cancelled += 1;
@@ -273,6 +275,15 @@ fn aggregate_task_trees(trees: &[&TaskTree]) -> Value {
             total_tasks += 1;
             input_tokens += task.input_tokens_est as u64;
             output_tokens += task.output_tokens_est as u64;
+            if let Some(cost) = task
+                .result
+                .as_ref()
+                .and_then(|r| r.get("cost_usd_est"))
+                .and_then(|v| v.as_f64())
+            {
+                provider_cost_usd_est += cost;
+                cost_samples += 1;
+            }
         }
     }
     json!({
@@ -281,6 +292,12 @@ fn aggregate_task_trees(trees: &[&TaskTree]) -> Value {
         "task_count": total_tasks,
         "input_tokens_est": input_tokens,
         "output_tokens_est": output_tokens,
+        "provider_cost_usd_est": if cost_samples > 0 {
+            serde_json::Value::from(provider_cost_usd_est)
+        } else {
+            serde_json::Value::Null
+        },
+        "provider_cost_samples": cost_samples,
     })
 }
 

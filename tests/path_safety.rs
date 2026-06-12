@@ -1,3 +1,4 @@
+use rlm_mcp::project;
 use rlm_mcp::rlm::RlmEngine;
 use rlm_mcp::test_lock;
 use tempfile::TempDir;
@@ -38,6 +39,27 @@ fn scan_accepts_normal_relative_path() {
             .unwrap();
         assert!(scan["session_id"].is_string());
     });
+}
+
+#[test]
+fn cache_rejects_traversal_in_env() {
+    let _guard = test_lock::acquire();
+    std::env::set_var("RLM_CACHE_DIR", "nested\\..\\escape");
+    assert!(project::init_cache().is_err());
+    std::env::remove_var("RLM_CACHE_DIR");
+}
+
+#[test]
+fn cache_info_reports_layout() {
+    let _guard = test_lock::acquire();
+    let cache = TempDir::new().unwrap();
+    std::env::set_var("RLM_CACHE_DIR", cache.path());
+    let info = project::cache_info().unwrap();
+    assert!(info["cache_dir"].is_string());
+    assert!(info["subdirs"].as_array().unwrap().iter().any(|s| {
+        s.as_str() == Some("rlm-sessions")
+    }));
+    std::env::remove_var("RLM_CACHE_DIR");
 }
 
 #[test]

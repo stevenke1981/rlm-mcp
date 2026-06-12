@@ -91,7 +91,8 @@ cargo build --release
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `RLM_CACHE_DIR` | `%LOCALAPPDATA%\rlm-mcp` / `~/.cache/...` | Session cache root |
+| `RLM_CACHE_DIR` | `%LOCALAPPDATA%\rlm-mcp` / `~/.cache/...` | Dedicated cache root (auto-creates `rlm-sessions`, `rlm-artifacts`, …) |
+| `RLM_ALLOW_SYSTEM_TEMP` | unset | Set `1` only if you must use bare OS temp as cache |
 | `RLM_MAX_FILE_BYTES` | `524288` | Max single file size |
 | `RLM_MAX_TOTAL_BYTES` | `8388608` | Max total session bytes |
 | `RLM_MAX_CHUNKS` | `10000` | Max chunks per session |
