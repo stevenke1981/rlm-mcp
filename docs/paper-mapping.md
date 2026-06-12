@@ -163,7 +163,7 @@ Metrics recorded: accuracy, `bytes_in` / `bytes_out` (model-visible), `tokens_es
 | Model choice affects behavior | Provider abstraction; today `mock` only | **Partial** until OpenAI/local provider (P2) |
 | Prompt stuffing is the anti-pattern | `examples/bad-prompt-stuffing.md` | examples |
 
-Full limitations write-up: **Planned** → `docs/limitations.md` (TODO P3).
+Full limitations write-up: [`limitations.md`](limitations.md). Benchmark guide: [`benchmarks.md`](benchmarks.md).
 
 ---
 
@@ -201,7 +201,7 @@ Priority gaps that prevent calling the repo “paper-complete”:
 | P0 | BM25 peek; `rlm_map_claim` / `complete`; executable REPL decision |
 | P1 | Large benchmark fixtures; provider dollar cost |
 | P2 | OpenAI-compatible provider; GitHub release workflow; release artifact smoke |
-| P3 | `docs/limitations.md`, `docs/benchmarks.md` |
+| P3 | — (limitations + benchmarks docs shipped) |
 
 ---
 

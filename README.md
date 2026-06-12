@@ -92,6 +92,8 @@ Walkthrough and examples: [`docs/rlm-loop.md`](docs/rlm-loop.md), [`examples/`](
 
 Paper ↔ implementation map: [`docs/paper-mapping.md`](docs/paper-mapping.md)
 
+Limitations and benchmarks: [`docs/limitations.md`](docs/limitations.md), [`docs/benchmarks.md`](docs/benchmarks.md)
+
 ## CLI (non-MCP)
 
 Run without args to start MCP stdio server. With a subcommand, outputs JSON:

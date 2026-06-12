@@ -414,8 +414,8 @@ Acceptance criteria:
   - map
   - reduce
   - recursion
-- [ ] Add `docs/benchmarks.md`.
-- [ ] Add `docs/limitations.md`:
+- [x] Add `docs/benchmarks.md`.
+- [x] Add `docs/limitations.md`:
   - small/simple contexts may be worse than direct calls
   - recursive trajectories can have high tail cost
   - provider-backed recursion is optional
