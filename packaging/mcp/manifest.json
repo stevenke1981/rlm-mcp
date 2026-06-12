@@ -1,0 +1,36 @@
+{
+  "schema_version": "0.1",
+  "name": "codebase-memory-rlm-mcp",
+  "display_name": "codebase-memory-rlm-mcp",
+  "version": "0.1.0",
+  "transport": "stdio",
+  "command": "codebase-memory-rlm-mcp",
+  "args": [],
+  "env": {},
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false
+  },
+  "tools": [
+    "rlm_workflow",
+    "rlm_scan",
+    "rlm_peek",
+    "rlm_chunk",
+    "rlm_session_list",
+    "rlm_session_delete"
+  ],
+  "install": {
+    "windows_binary": "target/release/codebase-memory-rlm-mcp.exe",
+    "unix_binary": "target/release/codebase-memory-rlm-mcp",
+    "recommended_command": "./install.ps1",
+    "manual_templates": [
+      "packaging/mcp/generic-mcp.json",
+      "packaging/mcp/codex-config.toml",
+      "packaging/mcp/opencode.json",
+      "packaging/mcp/claude-settings.json"
+    ]
+  },
+  "standalone": true,
+  "requires": []
+}

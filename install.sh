@@ -47,10 +47,11 @@ install_skill "$HOME/.config/opencode/skills/$SKILL_NAME" "OpenCode (~/.config/o
 echo ""
 echo -e "${GREEN}Binary installed: ${CONFIG_BIN}/codebase-memory-rlm-mcp${NC}"
 echo ""
-echo -e "${GRAY}Add to your agent MCP config:${NC}"
+echo -e "${GRAY}Add to agent MCP config (or copy from packaging/mcp/):${NC}"
 echo -e '${GRAY}  "codebase-memory-rlm-mcp": {'
 echo -e '${GRAY}    "command": ["'"$CONFIG_BIN/codebase-memory-rlm-mcp"'"],'
+echo -e '${GRAY}    "enabled": true'
 echo -e '${GRAY}  }${NC}'
 echo ""
-echo -e "${GRAY}Standalone RLM server — no other MCP dependency required.${NC}"
+echo -e "${GRAY}Standalone RLM — no CBM dependency. Optional: cbm-mcp dual-servers.example.json${NC}"
 echo ""

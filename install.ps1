@@ -39,7 +39,8 @@ Install-Skill (Join-Path $userHome ".config\opencode\skills\$SkillName") "OpenCo
 Write-Host ""
 Write-Host "Binary installed: $BinDir\codebase-memory-rlm-mcp.exe" -ForegroundColor Green
 Write-Host ""
-Write-Host "Add to agent MCP config:" -ForegroundColor DarkGray
+Write-Host "Add to agent MCP config (or copy from packaging\mcp\):" -ForegroundColor DarkGray
 Write-Host "  command: [\"$BinDir\codebase-memory-rlm-mcp.exe\"]" -ForegroundColor DarkGray
-Write-Host "Standalone RLM server — no other MCP dependency required." -ForegroundColor DarkGray
+Write-Host "  server name: codebase-memory-rlm-mcp" -ForegroundColor DarkGray
+Write-Host "Standalone RLM — no CBM dependency. Optional dual setup: cbm-mcp/packaging/mcp/dual-servers.example.json" -ForegroundColor DarkGray
 Write-Host ""

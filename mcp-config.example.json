@@ -1,6 +1,7 @@
 {
   "codebase-memory-rlm-mcp": {
-    "command": ["D:\\rlm-mcp\\target\\release\\codebase-memory-rlm-mcp.exe"],
+    "type": "local",
+    "command": ["{{RLM_BINARY}}"],
     "enabled": true,
     "timeout": 120000
   }

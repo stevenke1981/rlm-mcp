@@ -31,15 +31,20 @@ Unix:
 
 ## MCP configuration
 
+Templates: [`packaging/mcp/`](packaging/mcp/) (OpenCode, Codex, Claude, generic).
+
 ```json
 {
   "codebase-memory-rlm-mcp": {
     "type": "local",
-    "command": ["D:\\rlm-mcp\\target\\release\\codebase-memory-rlm-mcp.exe"],
-    "enabled": true
+    "command": ["codebase-memory-rlm-mcp"],
+    "enabled": true,
+    "timeout": 120000
   }
 }
 ```
+
+Replace `command` with the absolute path from `install.ps1` / `install.sh`, or use `{{RLM_BINARY}}` in templates.
 
 ## Environment
 

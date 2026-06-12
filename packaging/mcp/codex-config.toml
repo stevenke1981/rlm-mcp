@@ -1,0 +1,3 @@
+[mcp_servers.codebase-memory-rlm-mcp]
+command = "{{RLM_BINARY}}"
+args = []
