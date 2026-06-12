@@ -6,6 +6,7 @@ Copy-paste workflows for agents integrating via MCP or CLI.
 |---------|------|-------------|
 | Log diagnosis | [`fixtures/log-diagnosis/`](fixtures/log-diagnosis/) | ERROR lines in a multi-file mini corpus |
 | Worker JSON | [`worker-output.example.json`](worker-output.example.json) | Expected map-phase worker output |
+| Parallel workers | [`parallel-workers.md`](parallel-workers.md) | Multi-agent claim/complete coordination |
 | Anti-pattern | [`bad-prompt-stuffing.md`](bad-prompt-stuffing.md) | Why not to paste long context into chat |
 
 Full walkthrough: [`docs/rlm-loop.md`](../docs/rlm-loop.md).

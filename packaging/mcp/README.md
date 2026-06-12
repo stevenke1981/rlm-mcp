@@ -8,7 +8,7 @@ Binary: `rlm-mcp` or absolute path to release binary
 
 ## Contract snapshot
 
-`tools-list.snapshot.json` is the canonical `tools/list` contract (26 tools as of v0.1.0).
+`tools-list.snapshot.json` is the canonical `tools/list` contract (28 tools).
 
 Human-readable schema: [`docs/tools.md`](../../docs/tools.md). Machine-readable: MCP `rlm_tools_reference` or `rlm-mcp tools-reference --json`.
 CI compares live `tool_definitions()` against this file. Refresh after adding tools:
@@ -55,9 +55,9 @@ Replace `{{RLM_BINARY}}` with an absolute path.
 
 No `CBM_*` variables — this server does not call codebase-memory-mcp.
 
-## Tools (26)
+## Tools (28)
 
-See `tools-list.snapshot.json` for the full contract. Core loop: `rlm_scan`, `rlm_peek`, `rlm_chunk`, `rlm_map_plan`, `rlm_reduce_merge`, `rlm_task_*`, `rlm_trajectory_*`, `rlm_budget_*`, `rlm_benchmark_*`.
+See `tools-list.snapshot.json` for the full contract. Core loop: `rlm_scan`, `rlm_peek`, `rlm_chunk`, `rlm_map_plan`, `rlm_map_claim`, `rlm_map_complete`, `rlm_reduce_merge`, `rlm_task_*`, `rlm_trajectory_*`, `rlm_budget_*`, `rlm_benchmark_*`.
 
 ## Optional: graph tools
 

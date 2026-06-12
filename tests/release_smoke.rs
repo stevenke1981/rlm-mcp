@@ -186,7 +186,7 @@ fn release_binary_mcp_stdio_initialize_and_tools_list() {
 
     let list_body = read_mcp_frame(&mut reader);
     let list: Value = serde_json::from_str(&list_body).unwrap();
-    assert_eq!(list["result"]["tools"].as_array().unwrap().len(), 26);
+    assert_eq!(list["result"]["tools"].as_array().unwrap().len(), 28);
 
     let _ = child.kill();
     let _ = child.wait();

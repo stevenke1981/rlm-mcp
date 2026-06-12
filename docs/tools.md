@@ -2,7 +2,7 @@
 
 Machine-readable source of truth: call `rlm_tools_reference` (MCP) or `rlm-mcp tools-reference --json` (CLI).
 
-Contract snapshot: [`packaging/mcp/tools-list.snapshot.json`](../packaging/mcp/tools-list.snapshot.json) (26 tools in v0.1.0).
+Contract snapshot: [`packaging/mcp/tools-list.snapshot.json`](../packaging/mcp/tools-list.snapshot.json) (28 tools).
 
 ## Conventions
 
@@ -128,6 +128,29 @@ Create parallel work batches from chunk IDs or file pattern.
 | `file_pattern` | `--file-pattern` | |
 | `batch_size` | `--batch-size` | 3 |
 
+**Returns:** `plan_id`, `batches`, `worker_output_schema`. Plan is persisted for claim/complete.
+
+### `rlm_map_claim`
+
+Claim the next pending batch (or a specific `batch_id`) for a worker.
+
+| MCP argument | CLI flag | Default |
+|--------------|----------|---------|
+| `plan_id` | `--plan-id` | required |
+| `worker_id` | `--worker-id` | required |
+| `batch_id` | `--batch-id` | optional (next pending if omitted) |
+
+### `rlm_map_complete`
+
+Mark a claimed batch complete and store worker JSON output.
+
+| MCP argument | CLI flag | Default |
+|--------------|----------|---------|
+| `plan_id` | `--plan-id` | required |
+| `worker_id` | `--worker-id` | required |
+| `batch_id` | `--batch-id` | required |
+| `output` | `--output` | required (JSON string on CLI) |
+
 ## Reduce phase
 
 ### `rlm_reduce_schema`
@@ -246,7 +269,7 @@ Returns this reference as structured JSON for agents. CLI: `rlm-mcp tools-refere
 
 1. `rlm_scan` → get `session_id`
 2. `rlm_peek` → narrow to `chunk_id` values
-3. `rlm_map_plan` + `rlm_chunk` → worker batches
+3. `rlm_map_plan` + `rlm_map_claim` + `rlm_chunk` + `rlm_map_complete` → worker batches
 4. Workers produce JSON → `rlm_reduce_merge`
 5. If `needs_recursion`: `rlm_task_create` → `rlm_task_reduce`
 6. `rlm_trajectory_final` + `rlm_budget_status` for cost/coverage audit

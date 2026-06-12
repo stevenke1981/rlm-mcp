@@ -47,6 +47,8 @@ Definition of done:
   - `rlm_env_info`
   - `rlm_slice`
   - `rlm_map_plan`
+  - `rlm_map_claim`
+  - `rlm_map_complete`
   - `rlm_reduce_schema`
   - `rlm_reduce_merge`
 - [x] Do not add graph indexing tools to this repo.
@@ -150,9 +152,9 @@ Acceptance criteria:
   - include/exclude metadata
   - stable chunk IDs
 - [x] Add `rlm_map_plan` to create parallel work units from peek results.
-- [ ] Add `rlm_map_claim` / `rlm_map_complete` if multi-agent coordination is needed.
+- [x] Add `rlm_map_claim` / `rlm_map_complete` if multi-agent coordination is needed.
 - [x] Define expected worker output JSON schema.
-- [ ] Add examples for parallel agent workers.
+- [x] Add examples for parallel agent workers.
 
 Acceptance criteria:
 

@@ -44,7 +44,7 @@ pub fn map_plan(
         "batch_size": batch_size.max(1),
         "batches": batches,
         "worker_output_schema": worker_output_schema(),
-        "hint": "Assign each batch_id to a worker; workers call rlm_chunk with chunk_ids"
+        "hint": "Use plan_id with rlm_map_claim for coordinated workers, or assign batch_id manually"
     })
 }
 

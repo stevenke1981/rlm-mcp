@@ -78,7 +78,7 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 | Paginated chunk reads | `rlm_chunk` (offset, limit, `chunk_id`, file pattern) | **Done** | `tests/rlm_e2e.rs`, multi-worker fixture |
 | Parallel work units from filter hits | `rlm_map_plan` (`src/rlm/map.rs`) | **Done** | `tests/rlm_e2e.rs` |
 | Worker output JSON schema | `rlm_reduce_schema`, `examples/worker-output.example.json` | **Done** | `tests/example_walkthrough.rs` |
-| Multi-agent claim/complete coordination | — | **Planned** | TODO P0: `rlm_map_claim` / `rlm_map_complete` |
+| Multi-agent claim/complete coordination | `rlm_map_claim` / `rlm_map_complete` (`src/rlm/map_ledger.rs`) | **Done** | `tests/session_storage.rs`, `examples/parallel-workers.md` |
 | Parallel worker examples | Single-worker walkthrough | **Partial** | `docs/rlm-loop.md`; dedicated multi-agent doc **Planned** |
 
 **Acceptance:** Parent agents spawn workers over batches; workers return reducible JSON.
@@ -167,7 +167,7 @@ Full limitations write-up: [`limitations.md`](limitations.md). Benchmark guide: 
 
 ---
 
-## 10. MCP / CLI surface (26 tools)
+## 10. MCP / CLI surface (28 tools)
 
 All paper-loop phases are exposed as MCP tools with CLI equivalents (`src/cli.rs`). Contract tests:
 
@@ -178,7 +178,7 @@ All paper-loop phases are exposed as MCP tools with CLI equivalents (`src/cli.rs
 | tools/list snapshot | `src/mcp/server.rs` (`write_tools_snapshot`) |
 | Schema docs | `docs/tools.md`, `rlm_tools_reference` |
 
-Snapshot: `packaging/mcp/tools-list.snapshot.json` (26 tools).
+Snapshot: `packaging/mcp/tools-list.snapshot.json` (28 tools).
 
 ---
 
@@ -198,7 +198,7 @@ Priority gaps that prevent calling the repo “paper-complete”:
 
 | Priority | Item |
 |----------|------|
-| P0 | `rlm_map_claim` / `complete`; executable REPL decision |
+| P0 | Executable REPL decision |
 | P1 | Large benchmark fixtures; provider dollar cost |
 | P2 | OpenAI-compatible provider; GitHub release workflow; release artifact smoke |
 | P3 | — (limitations + benchmarks docs shipped) |

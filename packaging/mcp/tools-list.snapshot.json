@@ -1,6 +1,6 @@
 {
   "server": "rlm-mcp",
-  "tool_count": 26,
+  "tool_count": 28,
   "tools": [
     {
       "description": "List available RLM benchmark suites (S-NIAH mini-suite for CI).",
@@ -141,6 +141,55 @@
         "type": "object"
       },
       "name": "rlm_env_info"
+    },
+    {
+      "description": "Claim the next unclaimed batch (or a specific batch_id) for a worker.",
+      "inputSchema": {
+        "properties": {
+          "batch_id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "worker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "worker_id"
+        ],
+        "type": "object"
+      },
+      "name": "rlm_map_claim"
+    },
+    {
+      "description": "Mark a claimed batch complete and store worker JSON output.",
+      "inputSchema": {
+        "properties": {
+          "batch_id": {
+            "type": "string"
+          },
+          "output": {
+            "type": "object"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "worker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "worker_id",
+          "batch_id",
+          "output"
+        ],
+        "type": "object"
+      },
+      "name": "rlm_map_complete"
     },
     {
       "description": "Create parallel work batches from chunk_ids or file pattern.",

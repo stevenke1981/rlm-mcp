@@ -47,6 +47,8 @@ impl ToolHandler {
             "rlm_chunk" => self.rlm_chunk(args),
             "rlm_peek" => self.rlm_peek(args),
             "rlm_map_plan" => self.rlm_map_plan(args),
+            "rlm_map_claim" => self.rlm_map_claim(args),
+            "rlm_map_complete" => self.rlm_map_complete(args),
             "rlm_reduce_schema" => Ok(self.rlm.reduce_schema()),
             "rlm_reduce_merge" => self.rlm_reduce_merge(args),
             "rlm_session_list" => Ok(self.rlm.session_list()),
@@ -235,6 +237,25 @@ impl ToolHandler {
         let batch_size = args.get("batch_size").and_then(|v| v.as_u64()).unwrap_or(3) as usize;
         self.rlm
             .map_plan(session_id, chunk_ids.as_deref(), file_pattern, batch_size)
+    }
+
+    fn rlm_map_claim(&self, args: &Value) -> Result<Value> {
+        let plan_id = require_str(args, "plan_id")?;
+        let worker_id = require_str(args, "worker_id")?;
+        let batch_id = args.get("batch_id").and_then(|v| v.as_str());
+        self.rlm.map_claim(plan_id, worker_id, batch_id)
+    }
+
+    fn rlm_map_complete(&self, args: &Value) -> Result<Value> {
+        let plan_id = require_str(args, "plan_id")?;
+        let worker_id = require_str(args, "worker_id")?;
+        let batch_id = require_str(args, "batch_id")?;
+        let output = args
+            .get("output")
+            .cloned()
+            .ok_or_else(|| Error::InvalidArgument("missing output".into()))?;
+        self.rlm
+            .map_complete(plan_id, worker_id, batch_id, output)
     }
 
     fn rlm_reduce_merge(&self, args: &Value) -> Result<Value> {
@@ -467,6 +488,33 @@ pub fn tool_definitions() -> Vec<Value> {
                     "chunk_ids": { "type": "array", "items": { "type": "string" } },
                     "file_pattern": { "type": "string" },
                     "batch_size": { "type": "integer", "default": 3 }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_map_claim",
+            "Claim the next unclaimed batch (or a specific batch_id) for a worker.",
+            json!({
+                "type": "object",
+                "required": ["plan_id", "worker_id"],
+                "properties": {
+                    "plan_id": { "type": "string" },
+                    "worker_id": { "type": "string" },
+                    "batch_id": { "type": "string" }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_map_complete",
+            "Mark a claimed batch complete and store worker JSON output.",
+            json!({
+                "type": "object",
+                "required": ["plan_id", "worker_id", "batch_id", "output"],
+                "properties": {
+                    "plan_id": { "type": "string" },
+                    "worker_id": { "type": "string" },
+                    "batch_id": { "type": "string" },
+                    "output": { "type": "object" }
                 }
             }),
         ),

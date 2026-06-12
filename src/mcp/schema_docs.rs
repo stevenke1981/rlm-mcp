@@ -52,7 +52,7 @@ fn phase_for(name: &str) -> &'static str {
         | "rlm_session_export"
         | "rlm_session_import" => "load",
         "rlm_peek" | "rlm_slice" => "filter",
-        "rlm_chunk" | "rlm_map_plan" => "map",
+        "rlm_chunk" | "rlm_map_plan" | "rlm_map_claim" | "rlm_map_complete" => "map",
         "rlm_reduce_schema" | "rlm_reduce_merge" => "reduce",
         "rlm_task_create"
         | "rlm_task_list"
@@ -142,9 +142,28 @@ fn tool_meta(
         "rlm_map_plan" => (
             "map-plan",
             &["--session-id", "--chunk-id", "--file-pattern", "--batch-size"],
-            "parallel work batches with stable batch_ids",
+            "parallel work batches with stable batch_ids and plan_id",
             json!({ "session_id": "<session_id>", "batch_size": 3 }),
             "rlm-mcp map-plan --session-id <id> --batch-size 3 --json",
+        ),
+        "rlm_map_claim" => (
+            "map-claim",
+            &["--plan-id", "--worker-id", "--batch-id"],
+            "claimed batch_id, chunk_ids, remaining_pending",
+            json!({ "plan_id": "<plan_id>", "worker_id": "worker-a" }),
+            "rlm-mcp map-claim --plan-id <id> --worker-id worker-a --json",
+        ),
+        "rlm_map_complete" => (
+            "map-complete",
+            &["--plan-id", "--worker-id", "--batch-id", "--output"],
+            "completion status and all_complete flag",
+            json!({
+                "plan_id": "<plan_id>",
+                "worker_id": "worker-a",
+                "batch_id": "batch-0",
+                "output": { "batch_id": "batch-0", "findings": [], "unresolved": [] }
+            }),
+            "rlm-mcp map-complete --plan-id <id> --worker-id worker-a --batch-id batch-0 --output '{\"batch_id\":\"batch-0\",\"findings\":[]}' --json",
         ),
         "rlm_reduce_schema" => (
             "reduce-schema",

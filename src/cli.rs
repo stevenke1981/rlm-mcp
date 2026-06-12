@@ -8,7 +8,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
     if args.is_empty() {
         return Err(Error::InvalidArgument(
             "usage: rlm-mcp <command> [options]\n\
-             commands: scan, peek, chunk, env-info, slice, map-plan, reduce-schema, reduce-merge, \
+             commands: scan, peek, chunk, env-info, slice, map-plan, map-claim, map-complete, reduce-schema, reduce-merge, \
              session-list, session-delete, session-cleanup, session-export, session-import, \
              task-create, task-list, task-result, task-reduce, \
              trajectory-get, trajectory-final, budget-configure, budget-status, task-cancel, \
@@ -77,6 +77,24 @@ pub fn run_cli(args: &[String]) -> Result<()> {
             flags.get_str("file-pattern"),
             flags.get_usize("batch-size").unwrap_or(3),
         )?,
+        "map-claim" => engine.map_claim(
+            flags.require_str("plan-id")?,
+            flags.require_str("worker-id")?,
+            flags.get_str("batch-id"),
+        )?,
+        "map-complete" => {
+            let output = flags
+                .get_str("output")
+                .map(serde_json::from_str::<Value>)
+                .transpose()?
+                .ok_or_else(|| Error::InvalidArgument("provide --output JSON".into()))?;
+            engine.map_complete(
+                flags.require_str("plan-id")?,
+                flags.require_str("worker-id")?,
+                flags.require_str("batch-id")?,
+                output,
+            )?
+        }
         "reduce-schema" => engine.reduce_schema(),
         "reduce-merge" => {
             let workers = flags
