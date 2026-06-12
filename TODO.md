@@ -307,11 +307,11 @@ Acceptance criteria:
 
 ## P1 - MCP and CLI contract
 
-- [ ] Snapshot `tools/list`.
+- [x] Snapshot `tools/list`.
 - [x] Add CLI equivalents for every MCP tool.
 - [x] Ensure `--json --quiet` produces parseable stdout.
-- [ ] Add process-level tests for CLI tools.
-- [ ] Add MCP inspector smoke:
+- [x] Add process-level tests for CLI tools.
+- [x] Add MCP inspector smoke:
   - `initialize`
   - `tools/list`
   - `tools/call rlm_scan`
@@ -432,7 +432,7 @@ Acceptance criteria:
 - [x] `cargo clippy --all-targets -- -D warnings`
 - [ ] `cargo build --release`
 - [x] MCP initialize/tools/list smoke
-- [ ] CLI JSON contract tests
+- [x] CLI JSON contract tests
 - [x] scan/peek/chunk end-to-end fixture
 - [ ] multi-worker map fixture
 - [x] recursive sub-task fixture with mock provider

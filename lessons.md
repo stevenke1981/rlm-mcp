@@ -35,3 +35,9 @@
 **Trigger:** Project still used `codebase-memory-rlm-mcp` crate/binary name while repo directory is `rlm-mcp`.
 **Rule:** When renaming the project, update Cargo.toml package/lib/bin names, SERVER_NAME, default cache dir, install scripts, and all MCP templates in one commit before release.
 **Source:** project rename to rlm-mcp
+
+---
+## Lesson #7 — 2026-06-12
+**Trigger:** CLI integration tests failed because `env!("CARGO_BIN_EXE_rlm_mcp")` is not set at compile time on this toolchain.
+**Rule:** Process-level CLI tests should resolve the binary via `std::env::var("CARGO_BIN_EXE_*")` with fallback to `target/<profile>/rlm-mcp(.exe)`.
+**Source:** MCP/CLI contract tests

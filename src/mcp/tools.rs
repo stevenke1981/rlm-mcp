@@ -323,6 +323,27 @@ fn require_str<'a>(args: &'a Value, key: &str) -> Result<&'a str> {
         .ok_or_else(|| Error::InvalidArgument(format!("missing {key}")))
 }
 
+/// Canonical tools/list payload for contract tests and packaging snapshot.
+pub fn normalized_tools_snapshot() -> Value {
+    let mut tools = tool_definitions();
+    tools.sort_by(|a, b| {
+        a.get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .cmp(
+                b.get("name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(""),
+            )
+    });
+    json!({
+        "server": crate::mcp::server::SERVER_NAME,
+        "version": crate::mcp::server::SERVER_VERSION,
+        "tool_count": tools.len(),
+        "tools": tools
+    })
+}
+
 pub fn tool_definitions() -> Vec<Value> {
     vec![
         tool_def(

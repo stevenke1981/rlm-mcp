@@ -6,6 +6,15 @@ Server name: `rlm-mcp`
 Transport: stdio  
 Binary: `rlm-mcp` or absolute path to release binary
 
+## Contract snapshot
+
+`tools-list.snapshot.json` is the canonical `tools/list` contract (22 tools as of v0.1.0).
+CI compares live `tool_definitions()` against this file. Refresh after adding tools:
+
+```bash
+cargo test write_tools_snapshot -- --ignored
+```
+
 ## Build
 
 ```powershell
