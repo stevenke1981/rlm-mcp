@@ -382,20 +382,20 @@ Acceptance criteria:
 
 ## P2 - Packaging and agent handoff
 
-- [ ] Keep install scripts idempotent.
-- [ ] Add manual MCP templates:
+- [x] Keep install scripts idempotent.
+- [x] Add manual MCP templates:
   - OpenCode
   - Codex
   - Claude-style `mcpServers`
   - generic
-- [ ] Add stable installed binary path.
-- [ ] Add release artifact smoke:
+- [x] Add stable installed binary path.
+- [x] Add release artifact smoke:
   - checksum
   - extracted binary
   - MCP initialize/tools/list
   - scan/peek/chunk
-- [ ] Add GitHub release workflow.
-- [ ] Add README install troubleshooting.
+- [x] Add GitHub release workflow.
+- [x] Add README install troubleshooting.
 
 Acceptance criteria:
 

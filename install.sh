@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Install rlm-mcp MCP server + rlm skill.
+# Idempotent: re-run safely. Pass --skip-build to copy existing release binary only.
 
 set -euo pipefail
 
@@ -7,14 +8,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_NAME="rlm"
 BIN_DIR="$HOME/.local/bin"
 CONFIG_BIN="$HOME/.config/rlm-mcp/bin"
+SKIP_BUILD=0
+if [[ "${1:-}" == "--skip-build" ]]; then
+  SKIP_BUILD=1
+fi
 
 GREEN='\033[0;32m'
 GRAY='\033[0;90m'
 NC='\033[0m'
 
 echo ""
-echo -e "${GRAY}Building Rust release binary...${NC}"
-(cd "$SCRIPT_DIR" && cargo build --release)
+if [[ "$SKIP_BUILD" -eq 1 ]]; then
+  echo -e "${GRAY}Skipping build (--skip-build)...${NC}"
+else
+  echo -e "${GRAY}Building Rust release binary...${NC}"
+  (cd "$SCRIPT_DIR" && cargo build --release)
+fi
 
 BUILT="$SCRIPT_DIR/target/release/rlm-mcp"
 if [[ ! -f "$BUILT" ]]; then

@@ -59,6 +59,34 @@ Templates: [`packaging/mcp/`](packaging/mcp/) (OpenCode, Codex, Claude, generic)
 
 Replace `command` with the absolute path from `install.ps1` / `install.sh`, or use `{{RLM_BINARY}}` in templates.
 
+**Stable binary path:**
+
+| OS | Path |
+|----|------|
+| Windows | `%USERPROFILE%\.config\rlm-mcp\bin\rlm-mcp.exe` |
+| Linux / macOS | `~/.config/rlm-mcp/bin/rlm-mcp` (symlinked from `~/.local/bin/rlm-mcp`) |
+
+### Releases
+
+Push a version tag to trigger the GitHub release workflow:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Artifacts: per-target `.zip` / `.tar.gz` + `SHA256SUMS.txt`. Local packaging:
+
+```powershell
+cargo build --release
+.\scripts\package-release.ps1
+```
+
+```bash
+cargo build --release
+./scripts/package-release.sh
+```
+
 ## Environment
 
 | Variable | Default | Purpose |
@@ -134,8 +162,20 @@ External files / logs / docs / text blobs
 | [rlm-mcp](https://github.com/stevenke1981/rlm-mcp) | **This repo** — standalone RLM |
 | [cbm-mcp](https://github.com/stevenke1981/cbm-mcp) | Optional separate graph MCP (not required) |
 
+## Install troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `rlm-mcp` not found in agent | Use absolute path from install output; avoid bare `rlm-mcp` unless `~/.local/bin` is on `PATH` |
+| MCP server exits immediately | Run without subcommand for stdio MCP; use `rlm-mcp workflow --json` to verify CLI |
+| `tools/list` test fails after adding tools | `cargo test write_tools_snapshot -- --ignored` then commit snapshot |
+| Session not found across processes | Same `RLM_CACHE_DIR`; use `rlm_session_list --json` |
+| Permission denied on cache dir | Set `RLM_CACHE_DIR` to a writable directory |
+| Windows build slow | `cargo build --release` once; re-install with `.\install.ps1 -SkipBuild` |
+| Release smoke skipped | Run `cargo build --release` then `cargo test --test release_smoke --release` |
+
 ## Implementation roadmap
 
 See [`TODO.md`](TODO.md) for the full paper-complete implementation backlog.
 
-**Current status:** P0 complete; P1 recursive sub-call + trajectory logging (JSONL/replay/redaction) with per-run cost summary.
+**Current status:** P0/P1 complete; P3 docs complete; P2 packaging (CI + release workflow + artifact smoke).

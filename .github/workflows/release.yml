@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: rlm-mcp.exe
+            archive: zip
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            bin: rlm-mcp
+            archive: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            bin: rlm-mcp
+            archive: tar.gz
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Stage release files
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGING="dist/rlm-mcp-${VERSION}-${{ matrix.target }}"
+          mkdir -p "$STAGING"
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "$STAGING/"
+          cp README.md "$STAGING/"
+          cp packaging/release/LICENSE-MIT "$STAGING/LICENSE"
+          cp -r packaging/mcp "$STAGING/mcp-templates"
+          cp SKILL.md "$STAGING/"
+          printf '%s\n' "rlm-mcp ${VERSION} (${{ matrix.target }})" > "$STAGING/RELEASE.txt"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Package artifact (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $archive = "dist/rlm-mcp-$env:VERSION-${{ matrix.target }}.zip"
+          Compress-Archive -Path "dist/rlm-mcp-$env:VERSION-${{ matrix.target }}" -DestinationPath $archive -Force
+          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLower()
+          "$hash  $(Split-Path -Leaf $archive)" | Set-Content "$archive.sha256"
+
+      - name: Package artifact (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="dist/rlm-mcp-${VERSION}-${{ matrix.target }}.tar.gz"
+          tar -czf "$ARCHIVE" -C dist "rlm-mcp-${VERSION}-${{ matrix.target }}"
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
+          else
+            shasum -a 256 "$ARCHIVE" > "${ARCHIVE}.sha256"
+          fi
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rlm-mcp-${{ matrix.target }}
+          path: dist/*
+
+  release:
+    name: publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Aggregate checksums
+        run: |
+          cd artifacts
+          cat *.sha256 > SHA256SUMS.txt 2>/dev/null || true
+          ls -la
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*
+            artifacts/SHA256SUMS.txt
+          generate_release_notes: true

@@ -1,4 +1,9 @@
 # Install rlm-mcp MCP server + rlm skill (Windows).
+# Idempotent: re-run safely; use -SkipBuild to copy existing release binary only.
+
+param(
+    [switch]$SkipBuild
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -8,10 +13,14 @@ $userHome = $env:USERPROFILE
 $BinDir = Join-Path $userHome ".config\rlm-mcp\bin"
 
 Write-Host ""
-Write-Host "Building Rust release binary..." -ForegroundColor DarkGray
-Push-Location $ScriptDir
-cargo build --release
-Pop-Location
+if ($SkipBuild) {
+    Write-Host "Skipping build (-SkipBuild)..." -ForegroundColor DarkGray
+} else {
+    Write-Host "Building Rust release binary..." -ForegroundColor DarkGray
+    Push-Location $ScriptDir
+    cargo build --release
+    Pop-Location
+}
 
 $Built = Join-Path $ScriptDir "target\release\rlm-mcp.exe"
 if (-not (Test-Path $Built)) {
