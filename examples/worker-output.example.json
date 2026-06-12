@@ -1,0 +1,16 @@
+{
+  "batch_id": "batch-0",
+  "worker_id": "worker-a",
+  "findings": [
+    {
+      "summary": "Three ERROR lines: disk full, write failed, flush timeout",
+      "chunk_ids": ["c-0"],
+      "paths": ["app.log"],
+      "confidence": 0.92,
+      "evidence_lines": [4, 5, 7]
+    }
+  ],
+  "unresolved": [
+    "Whether compaction after 08:45 fully resolved the incident"
+  ]
+}

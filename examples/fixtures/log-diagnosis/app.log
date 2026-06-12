@@ -1,0 +1,9 @@
+2026-06-12T08:00:01Z INFO service started pid=4412
+2026-06-12T08:00:02Z INFO listening on 0.0.0.0:8080
+2026-06-12T08:15:33Z WARN disk usage at 82%
+2026-06-12T08:22:10Z ERROR disk full on volume /data
+2026-06-12T08:22:11Z ERROR write failed: No space left on device
+2026-06-12T08:22:12Z WARN retrying flush in 5s
+2026-06-12T08:22:17Z ERROR timeout waiting for flush ack
+2026-06-12T08:30:00Z INFO compaction scheduled
+2026-06-12T08:45:00Z INFO compaction complete freed=2.1GB

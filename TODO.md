@@ -285,21 +285,21 @@ Acceptance criteria:
 
 ## P1 - Task patterns and examples
 
-- [ ] Add examples for:
+- [x] Add examples for:
   - huge log diagnosis
   - multi-document research
   - repository QA without graph tools
   - long transcript analysis
   - pairwise aggregation
   - line-by-line semantic transformation
-- [ ] Add walkthroughs showing:
+- [x] Add walkthroughs showing:
   - load
   - filter
   - map
   - reduce
   - recursive second pass
-- [ ] Add expected worker JSON examples.
-- [ ] Add bad examples showing prompt stuffing and why not to do it.
+- [x] Add expected worker JSON examples.
+- [x] Add bad examples showing prompt stuffing and why not to do it.
 
 Acceptance criteria:
 
@@ -408,7 +408,7 @@ Acceptance criteria:
   - Rust/MCP implementation
   - status
   - tests/examples
-- [ ] Add `docs/rlm-loop.md`:
+- [x] Add `docs/rlm-loop.md`:
   - external context
   - filter
   - map

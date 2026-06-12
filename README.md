@@ -88,6 +88,8 @@ Also: `rlm_session_list`, `rlm_session_delete`, `rlm_benchmark_list`, `rlm_bench
 
 Full parameter reference: [`docs/tools.md`](docs/tools.md)
 
+Walkthrough and examples: [`docs/rlm-loop.md`](docs/rlm-loop.md), [`examples/`](examples/)
+
 ## CLI (non-MCP)
 
 Run without args to start MCP stdio server. With a subcommand, outputs JSON:
