@@ -2,7 +2,7 @@
 #
 # Usage:
 #   irm https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/windows/install.ps1 | iex
-#   $env:RLM_VERSION = "v0.1.2"; .\packaging\windows\install.ps1
+#   $env:RLM_VERSION = "v0.1.3"; .\packaging\windows\install.ps1
 
 param(
     [string]$Version = $(if ($env:RLM_VERSION) { $env:RLM_VERSION } else { "latest" }),
@@ -31,7 +31,12 @@ Invoke-WebRequest -Uri $Url -OutFile $ArchivePath
 
 Write-Host "Verifying checksum ..."
 $sums = Invoke-WebRequest -Uri "$Base/SHA256SUMS.txt" -UseBasicParsing
-$expected = ($sums.Content -split "`n" | Where-Object { $_ -match "\s+$([regex]::Escape($Archive))`$" } | ForEach-Object { ($_ -split '\s+')[0] } | Select-Object -First 1)
+$checksumText = if ($sums.Content -is [byte[]]) {
+    [Text.Encoding]::UTF8.GetString($sums.Content)
+} else {
+    [string]$sums.Content
+}
+$expected = ($checksumText -split "`r?`n" | Where-Object { $_ -match "\s+$([regex]::Escape($Archive))`$" } | ForEach-Object { ($_ -split '\s+')[0] } | Select-Object -First 1)
 if (-not $expected) { throw "checksum for $Archive not found in SHA256SUMS.txt" }
 $actual = (Get-FileHash -Path $ArchivePath -Algorithm SHA256).Hash.ToLower()
 if ($actual -ne $expected.ToLower()) {
@@ -70,5 +75,5 @@ if ($LASTEXITCODE -ne 0) { throw "rlm-mcp OpenCode configuration failed" }
 
 Write-Host ""
 Write-Host "Installed rlm-mcp $Version -> $InstalledBinary" -ForegroundColor Green
-Write-Host "OpenCode MCP configured: [\"$InstalledBinary\"]"
+Write-Host ('OpenCode MCP configured: ["{0}"]' -f $InstalledBinary)
 if ($Skill) { Write-Host "Installed rlm skill for Codex, Claude Code, OpenCode, and agents." }

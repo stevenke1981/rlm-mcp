@@ -3,7 +3,7 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/macos/install.sh | bash
-#   RLM_VERSION=v0.1.2 ./packaging/macos/install.sh
+#   RLM_VERSION=v0.1.3 ./packaging/macos/install.sh
 
 set -euo pipefail
 

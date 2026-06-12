@@ -70,11 +70,11 @@ Installs to `~/.config/rlm-mcp/bin/rlm-mcp` and symlinks `~/.local/bin/rlm-mcp`.
 Pin a version:
 
 ```powershell
-.\install.ps1 -Version v0.1.2
+.\install.ps1 -Version v0.1.3
 ```
 
 ```bash
-RLM_VERSION=v0.1.2 ./install.sh
+RLM_VERSION=v0.1.3 ./install.sh
 ```
 
 ### Build from source checkout
