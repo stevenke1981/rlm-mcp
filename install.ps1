@@ -5,10 +5,22 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SkillName = "rlm"
 $userHome = $env:USERPROFILE
+$BinDir = Join-Path $userHome ".config\codebase-memory-rlm-mcp\bin"
 
 Write-Host ""
-Write-Host "Installing Python package..." -ForegroundColor DarkGray
-python -m pip install -e $ScriptDir --quiet
+Write-Host "Building Rust release binary..." -ForegroundColor DarkGray
+Push-Location $ScriptDir
+cargo build --release
+Pop-Location
+
+$Built = Join-Path $ScriptDir "target\release\codebase-memory-rlm-mcp.exe"
+if (-not (Test-Path $Built)) {
+    throw "Build failed: $Built not found"
+}
+
+New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
+Copy-Item $Built (Join-Path $BinDir "codebase-memory-rlm-mcp.exe") -Force
+Write-Host "  ✓ Binary → $BinDir\codebase-memory-rlm-mcp.exe" -ForegroundColor Green
 
 function Install-Skill {
     param([string]$TargetDir, [string]$Label)
@@ -25,11 +37,11 @@ Install-Skill (Join-Path $userHome ".agents\skills\$SkillName") "OpenCode / Code
 Install-Skill (Join-Path $userHome ".config\opencode\skills\$SkillName") "OpenCode native"
 
 Write-Host ""
-Write-Host "Package installed: python -m codebase_memory_rlm_mcp" -ForegroundColor Green
+Write-Host "Binary installed: $BinDir\codebase-memory-rlm-mcp.exe" -ForegroundColor Green
 Write-Host ""
 Write-Host "Add to agent MCP config:" -ForegroundColor DarkGray
-Write-Host '  command: ["python", "-m", "codebase_memory_rlm_mcp"]' -ForegroundColor DarkGray
-Write-Host '  env: { "CBM_PROJECT": "your-project" }' -ForegroundColor DarkGray
+Write-Host "  command: [\"$BinDir\codebase-memory-rlm-mcp.exe\"]" -ForegroundColor DarkGray
+Write-Host '  env: { "CBM_PROJECT": "your-project", "CBM_BINARY": "path\to\codebase-memory-mcp.exe" }' -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Requires codebase-memory-mcp running separately." -ForegroundColor Yellow
 Write-Host ""

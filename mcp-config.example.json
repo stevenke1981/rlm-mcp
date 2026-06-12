@@ -1,11 +1,11 @@
 {
   "codebase-memory-rlm-mcp": {
-    "command": ["python", "-m", "codebase_memory_rlm_mcp"],
+    "command": ["D:\\rlm-mcp\\target\\release\\codebase-memory-rlm-mcp.exe"],
     "enabled": true,
     "timeout": 120000,
     "environment": {
       "CBM_PROJECT": "your-project-name",
-      "CBM_BINARY": "C:\\Users\\YOU\\.config\\opencode-codebase-memory-mcp\\bin\\codebase-memory-mcp.exe"
+      "CBM_BINARY": "D:\\cbm-mcp\\target\\release\\codebase-memory-mcp.exe"
     }
   }
 }
