@@ -78,7 +78,8 @@
           "suite": {
             "default": "sniah",
             "enum": [
-              "sniah"
+              "sniah",
+              "oolong"
             ],
             "type": "string"
           }

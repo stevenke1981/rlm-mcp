@@ -16,10 +16,29 @@ rlm-mcp benchmark-list --json
 | Suite | Status | CI default | Fixture sizes |
 |-------|--------|------------|---------------|
 | `sniah` | **Runnable** | `mini` | `mini`, `small`, `large`, `nightly` |
+| `oolong` | **Runnable** | `mini` | `mini`, `small` |
 | `browsecomp_plus` | Planned | — | — |
-| `oolong` | Planned | — | — |
 | `oolong_pairs` | Planned | — | — |
 | `codeqa` | Planned | — | — |
+
+---
+
+## OOLONG-like (metric aggregation)
+
+**Task:** Each synthetic document contains one `METRIC=<n>` line. Baselines must return the **sum** of all metrics across documents (not a single needle value).
+
+**Fixture generation** (`src/benchmark/oolong.rs`):
+
+| Size | Documents | Typical use |
+|------|-----------|-------------|
+| `mini` | 6 | CI, fast local check |
+| `small` | 15 | Local regression |
+
+Compaction reads only head/tail lines and typically **under-counts** scattered metrics.
+
+```powershell
+rlm-mcp benchmark-run --suite oolong --fixture-size mini --json
+```
 
 ---
 

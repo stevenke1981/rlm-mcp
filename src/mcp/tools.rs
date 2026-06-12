@@ -834,7 +834,11 @@ pub fn tool_definitions() -> Vec<Value> {
             json!({
                 "type": "object",
                 "properties": {
-                    "suite": { "type": "string", "default": "sniah", "enum": ["sniah"] },
+                    "suite": {
+                        "type": "string",
+                        "default": "sniah",
+                        "enum": ["sniah", "oolong"]
+                    },
                     "fixture_size": {
                         "type": "string",
                         "default": "mini",

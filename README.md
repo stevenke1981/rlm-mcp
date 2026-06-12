@@ -189,4 +189,4 @@ External files / logs / docs / text blobs
 
 See [`TODO.md`](TODO.md) for the full paper-complete implementation backlog.
 
-**Current status:** P0/P1 complete; P3 docs complete; P2 packaging (CI + release workflow + artifact smoke).
+**Current status:** Paper-complete core (P0–P3); optional benchmark adapters: S-NIAH + OOLONG shipped; BrowseComp/CodeQA planned.
