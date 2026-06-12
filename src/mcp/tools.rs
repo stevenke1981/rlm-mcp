@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::rlm::{PeekOptions, RlmEngine, TaskBudget};
+use crate::rlm::{BudgetMode, PeekOptions, RlmEngine, SessionBudget, TaskBudget};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
@@ -66,6 +66,23 @@ impl ToolHandler {
             "rlm_task_reduce" => {
                 let root_id = require_str(args, "root_id")?;
                 self.rlm.task_reduce(root_id)
+            }
+            "rlm_task_cancel" => {
+                let root_id = require_str(args, "root_id")?;
+                let reason = args
+                    .get("reason")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("cancelled by agent");
+                self.rlm.task_cancel(root_id, reason)
+            }
+            "rlm_budget_configure" => {
+                let session_id = require_str(args, "session_id")?;
+                let config = parse_session_budget(session_id, args)?;
+                self.rlm.budget_configure(config)
+            }
+            "rlm_budget_status" => {
+                let session_id = require_str(args, "session_id")?;
+                Ok(self.rlm.budget_status(session_id))
             }
             "rlm_trajectory_get" => {
                 let session_id = require_str(args, "session_id")?;
@@ -214,6 +231,7 @@ impl ToolHandler {
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
         let budget = parse_budget(args);
+        let budget_mode = parse_budget_mode(args);
         self.rlm.task_create(
             session_id,
             prompt,
@@ -221,9 +239,56 @@ impl ToolHandler {
             parent_task_id,
             provider,
             budget,
+            budget_mode,
             execute,
         )
     }
+}
+
+fn parse_budget_mode(args: &Value) -> Option<BudgetMode> {
+    args.get("budget_mode")
+        .and_then(|v| v.as_str())
+        .and_then(|s| match s {
+            "soft_warning" | "soft-warning" => Some(BudgetMode::SoftWarning),
+            "fail_fast" | "fail-fast" => Some(BudgetMode::FailFast),
+            _ => None,
+        })
+}
+
+fn parse_session_budget(session_id: &str, args: &Value) -> Result<SessionBudget> {
+    let mode = args
+        .get("mode")
+        .and_then(|v| v.as_str())
+        .map(|s| match s {
+            "soft_warning" | "soft-warning" => BudgetMode::SoftWarning,
+            _ => BudgetMode::FailFast,
+        })
+        .unwrap_or_default();
+    let task_budget = args
+        .get("task_budget")
+        .and_then(parse_budget)
+        .unwrap_or_default();
+    Ok(SessionBudget {
+        session_id: session_id.into(),
+        mode,
+        max_chunks_read: args
+            .get("max_chunks_read")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(500),
+        max_sub_calls: args
+            .get("max_sub_calls")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(64),
+        max_total_tokens_est: args
+            .get("max_total_tokens_est")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(500_000),
+        max_wall_secs: args
+            .get("max_wall_secs")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(600),
+        task_budget,
+    })
 }
 
 fn parse_budget(args: &Value) -> Option<TaskBudget> {
@@ -431,6 +496,44 @@ pub fn tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "required": ["root_id"],
                 "properties": { "root_id": { "type": "string" } }
+            }),
+        ),
+        tool_def(
+            "rlm_task_cancel",
+            "Cancel a task tree and mark pending tasks as cancelled.",
+            json!({
+                "type": "object",
+                "required": ["root_id"],
+                "properties": {
+                    "root_id": { "type": "string" },
+                    "reason": { "type": "string", "default": "cancelled by agent" }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_budget_configure",
+            "Configure per-session budget limits and fail-fast/soft-warning mode.",
+            json!({
+                "type": "object",
+                "required": ["session_id"],
+                "properties": {
+                    "session_id": { "type": "string" },
+                    "mode": { "type": "string", "enum": ["fail_fast", "soft_warning"], "default": "fail_fast" },
+                    "max_chunks_read": { "type": "integer", "default": 500 },
+                    "max_sub_calls": { "type": "integer", "default": 64 },
+                    "max_total_tokens_est": { "type": "integer", "default": 500000 },
+                    "max_wall_secs": { "type": "integer", "default": 600 },
+                    "task_budget": { "type": "object" }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_budget_status",
+            "Report session budget usage, limits, and tail-cost variance.",
+            json!({
+                "type": "object",
+                "required": ["session_id"],
+                "properties": { "session_id": { "type": "string" } }
             }),
         ),
         tool_def(

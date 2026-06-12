@@ -17,3 +17,9 @@
 **Trigger:** `PeekOptions` moved into `peek_session`, then `opts.query` used after move in trajectory recorder.
 **Rule:** Capture trajectory byte counts from inputs before calling functions that take ownership of option structs.
 **Source:** P1 trajectory logging
+
+---
+## Lesson #4 — 2026-06-12
+**Trigger:** Budget check used `current >= max` so reading exactly up to the limit was rejected.
+**Rule:** Session budget pre-checks must use projected usage (`current + increment > max`), not `>=` on the limit itself.
+**Source:** P1 cost/budget accounting

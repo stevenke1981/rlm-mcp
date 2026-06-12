@@ -205,7 +205,7 @@ Acceptance criteria:
   - max fanout
   - max subcalls
   - max input bytes
-- [ ] Add recursion controls:
+- [x] Add recursion controls:
   - max wall time (enforced)
   - cancellation
 - [x] Add cycle/duplicate sub-task detection.
@@ -247,13 +247,13 @@ Acceptance criteria:
   - elapsed time
 - [ ] Track:
   - provider cost if configured
-- [ ] Add budget configuration:
+- [x] Add budget configuration:
   - per session
   - per task
   - per sub-call
   - per recursion tree
-- [ ] Add fail-fast and soft-warning modes.
-- [ ] Add high-variance tail cost reporting, matching the paper's caution.
+- [x] Add fail-fast and soft-warning modes.
+- [x] Add high-variance tail cost reporting, matching the paper's caution.
 
 Acceptance criteria:
 

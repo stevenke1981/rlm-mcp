@@ -1,3 +1,4 @@
+mod budget;
 mod config;
 mod env;
 mod filter;
@@ -10,6 +11,7 @@ mod task;
 mod trajectory;
 mod workflow;
 
+pub use budget::{BudgetMode, SessionBudget};
 pub use config::RlmConfig;
 pub use filter::PeekOptions;
 pub use provider::{DryRunProvider, MockProvider, ProviderResult};
@@ -28,6 +30,7 @@ pub struct RlmEngine {
     sessions: Arc<Mutex<SessionStore>>,
     tasks: Arc<Mutex<task::TaskStore>>,
     trajectory: Arc<Mutex<trajectory::TrajectoryStore>>,
+    budgets: Arc<Mutex<budget::BudgetStore>>,
 }
 
 impl RlmEngine {
@@ -36,7 +39,31 @@ impl RlmEngine {
             sessions: Arc::new(Mutex::new(SessionStore::new())),
             tasks: Arc::new(Mutex::new(task::TaskStore::new())),
             trajectory: Arc::new(Mutex::new(trajectory::TrajectoryStore::new())),
+            budgets: Arc::new(Mutex::new(budget::BudgetStore::new())),
         }
+    }
+
+    fn ensure_session_budget(
+        &self,
+        session_id: &str,
+        extra_chunks: u64,
+        extra_sub_calls: u64,
+        extra_tokens: u64,
+    ) -> Result<budget::BudgetEvaluation> {
+        let traj = self.trajectory.lock().unwrap().run(session_id);
+        let store = self.budgets.lock().unwrap();
+        let cfg = store.get_or_default(session_id);
+        let eval = store.evaluate_session(
+            session_id,
+            traj.as_ref(),
+            extra_chunks,
+            extra_sub_calls,
+            extra_tokens,
+        );
+        if !eval.allowed {
+            eval.clone().into_result(cfg.mode)?;
+        }
+        Ok(eval)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -174,6 +201,7 @@ impl RlmEngine {
         _include_metadata: bool,
     ) -> Result<Value> {
         let started = Instant::now();
+        let budget_eval = self.ensure_session_budget(session_id, limit as u64, 0, 0)?;
         let store = self.sessions.lock().unwrap();
         let session = store.get(session_id)?;
         let filtered: Vec<_> = session
@@ -205,7 +233,7 @@ impl RlmEngine {
             })
             .collect();
 
-        let out = json!({
+        let mut out = json!({
             "session_id": session_id,
             "offset": offset,
             "limit": limit,
@@ -213,6 +241,9 @@ impl RlmEngine {
             "chunk_ids": page.iter().map(|c| &c.id).collect::<Vec<_>>(),
             "chunks": chunks
         });
+        if !budget_eval.warnings.is_empty() {
+            out["budget_warnings"] = json!(budget_eval.warnings);
+        }
         self.record(
             session_id,
             "chunk",
@@ -327,9 +358,12 @@ impl RlmEngine {
         parent_task_id: Option<&str>,
         provider: &str,
         budget: Option<TaskBudget>,
+        budget_mode: Option<BudgetMode>,
         execute: bool,
     ) -> Result<Value> {
         let started = Instant::now();
+        let est_tokens = (prompt.len() + chunk_ids.len() * 64) as u64 / 4;
+        let budget_eval = self.ensure_session_budget(session_id, 0, 1, est_tokens)?;
         let sessions = self.sessions.lock().unwrap();
         let mut tasks = self.tasks.lock().unwrap();
         let result = tasks.create(
@@ -340,11 +374,12 @@ impl RlmEngine {
             parent_task_id,
             provider,
             budget,
+            budget_mode,
             execute,
         );
         match result {
             Ok((task, provider_result)) => {
-                let out = json!({
+                let mut out = json!({
                     "task_id": task.id,
                     "root_id": task.root_id,
                     "parent_id": task.parent_id,
@@ -360,6 +395,9 @@ impl RlmEngine {
                     "provider_result": provider_result,
                     "hint": "Use rlm_task_list / rlm_task_result; rlm_task_reduce on root_id"
                 });
+                if !budget_eval.warnings.is_empty() {
+                    out["budget_warnings"] = json!(budget_eval.warnings);
+                }
                 self.record(
                     session_id,
                     "sub_call",
@@ -469,6 +507,44 @@ impl RlmEngine {
             .lock()
             .unwrap()
             .get(session_id, format, redact, redact_patterns)
+    }
+
+    pub fn budget_configure(&self, config: SessionBudget) -> Result<Value> {
+        self.budgets.lock().unwrap().configure(config.clone())?;
+        Ok(json!({
+            "session_id": config.session_id,
+            "mode": config.mode,
+            "configured": true
+        }))
+    }
+
+    pub fn budget_status(&self, session_id: &str) -> Value {
+        let traj = self.trajectory.lock().unwrap().run(session_id);
+        let tasks = self.tasks.lock().unwrap();
+        let tree_refs = tasks.trees_for_session(session_id);
+        self.budgets
+            .lock()
+            .unwrap()
+            .status_report(session_id, traj.as_ref(), &tree_refs)
+    }
+
+    pub fn task_cancel(&self, root_id: &str, reason: &str) -> Result<Value> {
+        let started = Instant::now();
+        let out = self.tasks.lock().unwrap().cancel(root_id, reason)?;
+        let session_id = out
+            .get("session_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+        self.record(
+            session_id,
+            "cancel",
+            Some(root_id),
+            json!({ "reason": reason, "root_id": root_id }),
+            0,
+            0,
+            started,
+        );
+        Ok(out)
     }
 
     pub fn trajectory_record_final(

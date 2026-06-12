@@ -1,4 +1,5 @@
 use crate::error::{Error, Result};
+use crate::rlm::budget::{self, BudgetMode};
 use crate::rlm::provider::{resolve_provider, ProviderResult};
 use crate::rlm::session::SessionStore;
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,12 @@ pub struct TaskTree {
     pub root_id: String,
     pub session_id: String,
     pub budget: TaskBudget,
+    #[serde(default)]
+    pub budget_mode: BudgetMode,
+    #[serde(default)]
+    pub cancelled: bool,
+    #[serde(default)]
+    pub cancel_reason: Option<String>,
     pub tasks: HashMap<String, RlmTask>,
     pub created_at_unix: u64,
 }
@@ -94,6 +101,7 @@ impl TaskStore {
         parent_id: Option<&str>,
         provider: &str,
         budget: Option<TaskBudget>,
+        budget_mode: Option<BudgetMode>,
         execute: bool,
     ) -> Result<(RlmTask, Option<ProviderResult>)> {
         let session = sessions.get(session_id)?;
@@ -115,6 +123,7 @@ impl TaskStore {
                 .trees
                 .get_mut(&parent.root_id)
                 .ok_or_else(|| Error::Other("task tree missing".into()))?;
+            budget::check_tree_wall_time(tree)?;
             enforce_budget(tree, &parent, &tree_budget, prompt, chunk_ids)?;
             let depth = parent.depth + 1;
             (parent.root_id.clone(), Some(parent), depth, tree_budget)
@@ -131,6 +140,7 @@ impl TaskStore {
         let fingerprint = task_fingerprint(prompt, chunk_ids);
 
         if let Some(tree) = self.trees.get(&root_id) {
+            budget::check_tree_wall_time(tree)?;
             if tree.tasks.values().any(|t| t.fingerprint == fingerprint) {
                 return Err(Error::InvalidArgument(
                     "duplicate sub-task detected (same prompt + chunk_ids)".into(),
@@ -178,6 +188,9 @@ impl TaskStore {
                 root_id: root_id.clone(),
                 session_id: session_id.into(),
                 budget,
+                budget_mode: budget_mode.unwrap_or_default(),
+                cancelled: false,
+                cancel_reason: None,
                 tasks: HashMap::new(),
                 created_at_unix: now,
             };
@@ -226,6 +239,36 @@ impl TaskStore {
             })
             .flat_map(|t| t.tasks.values())
             .map(task_summary)
+            .collect()
+    }
+
+    pub fn cancel(&mut self, root_id: &str, reason: &str) -> Result<Value> {
+        let tree = self
+            .trees
+            .get_mut(root_id)
+            .ok_or_else(|| Error::TaskNotFound(root_id.into()))?;
+        tree.cancelled = true;
+        tree.cancel_reason = Some(reason.into());
+        for task in tree.tasks.values_mut() {
+            if task.status == TaskStatus::Pending || task.status == TaskStatus::Running {
+                task.status = TaskStatus::Cancelled;
+                task.error = Some(reason.into());
+            }
+        }
+        persist_tree(tree)?;
+        Ok(json!({
+            "root_id": root_id,
+            "session_id": tree.session_id,
+            "cancelled": true,
+            "reason": reason,
+            "tasks_affected": tree.tasks.len(),
+        }))
+    }
+
+    pub fn trees_for_session<'a>(&'a self, session_id: &str) -> Vec<&'a TaskTree> {
+        self.trees
+            .values()
+            .filter(|t| t.session_id == session_id)
             .collect()
     }
 
@@ -434,6 +477,7 @@ mod tests {
                 None,
                 "mock",
                 Some(budget),
+                None,
                 true,
             )
             .unwrap();
@@ -446,6 +490,7 @@ mod tests {
                 std::slice::from_ref(&chunk_id),
                 Some(&root.id),
                 "mock",
+                None,
                 None,
                 true,
             )

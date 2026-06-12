@@ -10,7 +10,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
             "usage: codebase-memory-rlm-mcp <command> [options]\n\
              commands: scan, peek, chunk, env-info, slice, map-plan, reduce-schema, reduce-merge, \
              session-list, session-delete, task-create, task-list, task-result, task-reduce, \
-             trajectory-get, trajectory-final, workflow"
+             trajectory-get, trajectory-final, budget-configure, budget-status, task-cancel, workflow"
                 .into(),
         ));
     }
@@ -92,6 +92,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
             flags.get_str("parent-task-id"),
             flags.get_str("provider").unwrap_or("mock"),
             None,
+            None,
             !flags.get_bool("no-execute"),
         )?,
         "task-list" => engine.task_list(flags.get_str("session-id"), flags.get_str("root-id")),
@@ -102,6 +103,29 @@ pub fn run_cli(args: &[String]) -> Result<()> {
             flags.get_str("format").unwrap_or("json"),
             !flags.get_bool("no-redact"),
             &flags.get_str_list("redact-pattern").unwrap_or_default(),
+        )?,
+        "budget-configure" => {
+            use crate::rlm::{BudgetMode, SessionBudget, TaskBudget};
+            let session_id = flags.require_str("session-id")?;
+            let mode = if flags.get_bool("soft-warning") {
+                BudgetMode::SoftWarning
+            } else {
+                BudgetMode::FailFast
+            };
+            engine.budget_configure(SessionBudget {
+                session_id: session_id.to_string(),
+                mode,
+                max_chunks_read: flags.get_usize("max-chunks").unwrap_or(500) as u64,
+                max_sub_calls: flags.get_usize("max-sub-calls").unwrap_or(64) as u64,
+                max_total_tokens_est: flags.get_usize("max-tokens").unwrap_or(500_000) as u64,
+                max_wall_secs: flags.get_usize("max-wall-secs").unwrap_or(600) as u64,
+                task_budget: TaskBudget::default(),
+            })?
+        }
+        "budget-status" => engine.budget_status(flags.require_str("session-id")?),
+        "task-cancel" => engine.task_cancel(
+            flags.require_str("root-id")?,
+            flags.get_str("reason").unwrap_or("cancelled by agent"),
         )?,
         "trajectory-final" => engine.trajectory_record_final(
             flags.require_str("session-id")?,

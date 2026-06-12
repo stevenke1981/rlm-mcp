@@ -170,6 +170,7 @@ fn recursive_subtask_with_mock_provider() {
                 None,
                 "mock",
                 None,
+                None,
                 true,
             )
             .unwrap();
@@ -182,6 +183,7 @@ fn recursive_subtask_with_mock_provider() {
                 std::slice::from_ref(&chunk_id),
                 Some(root["task_id"].as_str().unwrap()),
                 "mock",
+                None,
                 None,
                 true,
             )
@@ -244,6 +246,7 @@ fn trajectory_records_full_loop() {
                 None,
                 "mock",
                 None,
+                None,
                 true,
             )
             .unwrap();
@@ -262,5 +265,75 @@ fn trajectory_records_full_loop() {
             .trajectory_get(session_id, "jsonl", true, &[])
             .unwrap();
         assert!(jsonl["jsonl"].as_str().unwrap().contains("scan"));
+    });
+}
+
+#[test]
+fn budget_limits_and_cancel() {
+    with_cache(|engine| {
+        use codebase_memory_rlm_mcp::rlm::{BudgetMode, SessionBudget, TaskBudget};
+
+        let scan = engine
+            .scan(None, Some("line\n"), Some("x.txt"), None)
+            .unwrap();
+        let session_id = scan["session_id"].as_str().unwrap();
+
+        engine
+            .budget_configure(SessionBudget {
+                session_id: session_id.to_string(),
+                mode: BudgetMode::FailFast,
+                max_chunks_read: 1,
+                max_sub_calls: 2,
+                max_total_tokens_est: 10_000,
+                max_wall_secs: 600,
+                task_budget: TaskBudget::default(),
+            })
+            .unwrap();
+
+        engine.chunk(session_id, None, None, 0, 1, true).unwrap();
+
+        let blocked = engine.chunk(session_id, None, None, 0, 1, true);
+        assert!(blocked.is_err());
+
+        let status = engine.budget_status(session_id);
+        assert_eq!(status["usage"]["chunks_read"].as_u64().unwrap(), 1);
+        assert!(status["evaluation"]["allowed"].as_bool().unwrap());
+
+        let env = engine.env_info(session_id).unwrap();
+        let chunk_id = env["files"][0]["chunk_ids"][0]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        let root = engine
+            .task_create(
+                session_id,
+                "work",
+                std::slice::from_ref(&chunk_id),
+                None,
+                "mock",
+                None,
+                None,
+                true,
+            )
+            .unwrap();
+
+        let root_id = root["root_id"].as_str().unwrap();
+        let cancelled = engine.task_cancel(root_id, "test stop").unwrap();
+        assert!(cancelled["cancelled"].as_bool().unwrap());
+
+        let err = engine
+            .task_create(
+                session_id,
+                "after cancel",
+                std::slice::from_ref(&chunk_id),
+                Some(root["task_id"].as_str().unwrap()),
+                "mock",
+                None,
+                None,
+                true,
+            )
+            .unwrap_err();
+        assert!(err.to_string().contains("cancelled"));
     });
 }

@@ -74,6 +74,10 @@ impl TrajectoryStore {
         let _ = append_jsonl_event(session_id, run.events.last().unwrap());
     }
 
+    pub fn run(&self, session_id: &str) -> Option<TrajectoryRun> {
+        self.runs.get(session_id).cloned()
+    }
+
     pub fn get(
         &self,
         session_id: &str,
