@@ -10,7 +10,8 @@ pub fn run_cli(args: &[String]) -> Result<()> {
             "usage: codebase-memory-rlm-mcp <command> [options]\n\
              commands: scan, peek, chunk, env-info, slice, map-plan, reduce-schema, reduce-merge, \
              session-list, session-delete, task-create, task-list, task-result, task-reduce, \
-             trajectory-get, trajectory-final, budget-configure, budget-status, task-cancel, workflow"
+             trajectory-get, trajectory-final, budget-configure, budget-status, task-cancel, \
+             benchmark, workflow"
                 .into(),
         ));
     }
@@ -132,6 +133,25 @@ pub fn run_cli(args: &[String]) -> Result<()> {
             flags.require_str("answer")?,
             flags.get_usize("evidence-count").unwrap_or(0),
         ),
+        "benchmark" => {
+            let sub = flags
+                .get_str("suite")
+                .or_else(|| {
+                    args.get(1)
+                        .filter(|s| !s.starts_with("--"))
+                        .map(|s| s.as_str())
+                })
+                .unwrap_or("list");
+            match sub {
+                "list" => crate::benchmark::list_suites(),
+                "run" => crate::benchmark::run_suite(
+                    &engine,
+                    flags.get_str("name").unwrap_or("sniah"),
+                    flags.get_str("size"),
+                )?,
+                other => crate::benchmark::run_suite(&engine, other, flags.get_str("size"))?,
+            }
+        }
         "workflow" => engine.workflow(flags.get_str("phase").unwrap_or("overview")),
         _ => {
             return Err(Error::InvalidArgument(format!(

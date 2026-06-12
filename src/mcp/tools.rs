@@ -114,6 +114,15 @@ impl ToolHandler {
                     .rlm
                     .trajectory_record_final(session_id, answer, evidence_count))
             }
+            "rlm_benchmark_list" => Ok(crate::benchmark::list_suites()),
+            "rlm_benchmark_run" => {
+                let suite = args
+                    .get("suite")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("sniah");
+                let fixture_size = args.get("fixture_size").and_then(|v| v.as_str());
+                crate::benchmark::run_suite(&self.rlm, suite, fixture_size)
+            }
             _ => Err(Error::InvalidArgument(format!("unknown tool: {name}"))),
         }
     }
@@ -560,6 +569,22 @@ pub fn tool_definitions() -> Vec<Value> {
                     "session_id": { "type": "string" },
                     "answer": { "type": "string" },
                     "evidence_count": { "type": "integer", "default": 0 }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_benchmark_list",
+            "List available RLM benchmark suites (S-NIAH mini-suite for CI).",
+            json!({ "type": "object", "properties": {} }),
+        ),
+        tool_def(
+            "rlm_benchmark_run",
+            "Run an offline benchmark suite and record accuracy, cost, runtime, and trajectory metrics.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "suite": { "type": "string", "default": "sniah", "enum": ["sniah"] },
+                    "fixture_size": { "type": "string", "default": "mini", "enum": ["mini", "small"] }
                 }
             }),
         ),

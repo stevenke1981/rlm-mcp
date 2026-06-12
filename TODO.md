@@ -262,21 +262,21 @@ Acceptance criteria:
 
 ## P1 - Long-context benchmarks from the paper
 
-- [ ] Add benchmark harness with adapters for:
+- [x] Add benchmark harness with adapters for:
   - S-NIAH
   - BrowseComp-Plus-like local corpus task
   - OOLONG-like aggregation task
   - OOLONG-Pairs-like pairwise aggregation task
   - CodeQA-style repository understanding task
-- [ ] Add small synthetic fixtures that can run in CI.
+- [x] Add small synthetic fixtures that can run in CI.
 - [ ] Add large optional fixtures for local/nightly runs.
-- [ ] Implement baselines:
+- [x] Implement baselines:
   - direct full-context call where possible
   - summary/compaction agent
   - retrieval/BM25 agent
   - RLM without sub-calls
   - RLM with sub-calls
-- [ ] Record accuracy, cost estimate, runtime, and trajectory length.
+- [x] Record accuracy, cost estimate, runtime, and trajectory length.
 
 Acceptance criteria:
 
@@ -437,7 +437,7 @@ Acceptance criteria:
 - [ ] multi-worker map fixture
 - [x] recursive sub-task fixture with mock provider
 - [x] trajectory export/replay fixture
-- [ ] benchmark mini-suite
+- [x] benchmark mini-suite
 - [ ] install/release artifact smoke
 
 ## Non-goals

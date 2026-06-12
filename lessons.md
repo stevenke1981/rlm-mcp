@@ -23,3 +23,9 @@
 **Trigger:** Budget check used `current >= max` so reading exactly up to the limit was rejected.
 **Rule:** Session budget pre-checks must use projected usage (`current + increment > max`), not `>=` on the limit itself.
 **Source:** P1 cost/budget accounting
+
+---
+## Lesson #5 — 2026-06-12
+**Trigger:** S-NIAH benchmark compared trajectory `bytes_in` (includes full scan load) against direct baseline; peek with `include_content` returned entire chunk.
+**Rule:** Benchmark cost metrics must use model-visible context bytes (peek previews / chunk evidence), not external storage load or full-chunk content when filtering.
+**Source:** P1 benchmark mini-suite
