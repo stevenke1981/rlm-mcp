@@ -16,12 +16,14 @@ pub fn reject_path_traversal(path: &str) -> Result<()> {
     if trimmed.is_empty() {
         return Err(Error::InvalidArgument("path required".into()));
     }
-    for component in Path::new(trimmed).components() {
-        if matches!(component, Component::ParentDir) {
-            return Err(Error::InvalidArgument(
-                "path must not contain '..' segments".into(),
-            ));
-        }
+    if trimmed.split(['/', '\\']).any(|segment| segment == "..")
+        || Path::new(trimmed)
+            .components()
+            .any(|component| matches!(component, Component::ParentDir))
+    {
+        return Err(Error::InvalidArgument(
+            "path must not contain '..' segments".into(),
+        ));
     }
     Ok(())
 }

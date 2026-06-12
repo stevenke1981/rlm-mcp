@@ -63,8 +63,12 @@ fn pinned_default_cache() -> Result<PathBuf> {
 }
 
 fn resolve_env_cache_root(path_str: &str) -> Result<PathBuf> {
-    reject_path_traversal(path_str)?;
-    prepare_cache_root(&PathBuf::from(path_str))
+    let trimmed = path_str.trim();
+    if trimmed.is_empty() {
+        return Err(Error::InvalidArgument("cache path required".into()));
+    }
+    reject_path_traversal(trimmed)?;
+    prepare_cache_root(&PathBuf::from(trimmed))
 }
 
 fn fallback_cache_dir() -> PathBuf {
@@ -109,12 +113,15 @@ fn is_unsafe_bare_system_temp(path: &Path) -> bool {
 }
 
 fn reject_path_traversal(path: &str) -> Result<()> {
-    for component in Path::new(path.trim()).components() {
-        if matches!(component, Component::ParentDir) {
-            return Err(Error::InvalidArgument(
-                "cache path must not contain '..' segments".into(),
-            ));
-        }
+    let trimmed = path.trim();
+    if trimmed.split(['/', '\\']).any(|segment| segment == "..")
+        || Path::new(trimmed)
+            .components()
+            .any(|component| matches!(component, Component::ParentDir))
+    {
+        return Err(Error::InvalidArgument(
+            "cache path must not contain '..' segments".into(),
+        ));
     }
     Ok(())
 }
