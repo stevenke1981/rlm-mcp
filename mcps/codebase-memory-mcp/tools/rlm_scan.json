@@ -1,0 +1,17 @@
+{
+  "name": "rlm_scan",
+  "description": "Scan directory into RLM session.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "path": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "path"
+    ],
+    "title": "RlmScanArgs",
+    "type": "object"
+  }
+}

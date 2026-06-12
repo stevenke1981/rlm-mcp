@@ -1,0 +1,36 @@
+{
+  "name": "trace_path",
+  "description": "Trace call paths.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "depth": {
+        "default": 3,
+        "format": "int64",
+        "type": "integer"
+      },
+      "direction": {
+        "default": "both",
+        "type": "string"
+      },
+      "function_name": {
+        "type": "string"
+      },
+      "mode": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "project": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "project",
+      "function_name"
+    ],
+    "title": "TraceArgs",
+    "type": "object"
+  }
+}

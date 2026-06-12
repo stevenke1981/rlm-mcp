@@ -1,0 +1,59 @@
+{
+  "name": "search_graph",
+  "description": "Search the code knowledge graph.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "file_pattern": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "label": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "limit": {
+        "default": 20,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "name_pattern": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "offset": {
+        "default": 0,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "project": {
+        "type": "string"
+      },
+      "qn_pattern": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "query": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "project"
+    ],
+    "title": "SearchGraphArgs",
+    "type": "object"
+  }
+}

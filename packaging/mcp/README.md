@@ -1,10 +1,10 @@
-# codebase-memory-rlm-mcp MCP package
+# rlm-mcp MCP package
 
-Handoff templates for **codebase-memory-rlm-mcp** — standalone RLM server.
+Handoff templates for **rlm-mcp** — standalone RLM server.
 
-Server name: `codebase-memory-rlm-mcp`  
+Server name: `rlm-mcp`  
 Transport: stdio  
-Binary: `codebase-memory-rlm-mcp` or absolute path to release binary
+Binary: `rlm-mcp` or absolute path to release binary
 
 ## Build
 
@@ -12,8 +12,8 @@ Binary: `codebase-memory-rlm-mcp` or absolute path to release binary
 cargo build --release
 ```
 
-Windows: `target\release\codebase-memory-rlm-mcp.exe`  
-Unix: `target/release/codebase-memory-rlm-mcp`
+Windows: `target\release\rlm-mcp.exe`  
+Unix: `target/release/rlm-mcp`
 
 ## Install
 
@@ -22,7 +22,7 @@ Unix: `target/release/codebase-memory-rlm-mcp`
 ./install.sh    # Unix
 ```
 
-Copies binary to `~/.config/codebase-memory-rlm-mcp/bin/` and installs the `rlm` skill.
+Copies binary to `~/.config/rlm-mcp/bin/` and installs the `rlm` skill.
 
 ## Manual config
 
@@ -40,7 +40,7 @@ Replace `{{RLM_BINARY}}` with an absolute path.
 
 | Variable | Purpose |
 |----------|---------|
-| `RLM_CACHE_DIR` | Session cache (default: OS cache dir / `codebase-memory-rlm-mcp`) |
+| `RLM_CACHE_DIR` | Session cache (default: OS cache dir / `rlm-mcp`) |
 
 No `CBM_*` variables — this server does not call codebase-memory-mcp.
 

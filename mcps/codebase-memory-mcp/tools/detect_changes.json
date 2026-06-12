@@ -1,0 +1,17 @@
+{
+  "name": "detect_changes",
+  "description": "Detect git-changed files.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "project": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "project"
+    ],
+    "title": "ProjectArgs",
+    "type": "object"
+  }
+}

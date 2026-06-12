@@ -3,7 +3,7 @@ use crate::mcp::tools::{tool_definitions, ToolHandler};
 use crate::mcp::transport::{read_stdin_message, write_stdout_message};
 use serde_json::{json, Value};
 
-pub const SERVER_NAME: &str = "codebase-memory-rlm-mcp";
+pub const SERVER_NAME: &str = "rlm-mcp";
 pub const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct McpServer {
@@ -123,7 +123,7 @@ mod tests {
             "params": {}
         });
         let resp = server.handle_message(&req.to_string()).unwrap().unwrap();
-        assert!(resp.contains("codebase-memory-rlm-mcp"));
+        assert!(resp.contains("rlm-mcp"));
     }
 
     #[test]

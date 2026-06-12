@@ -1,4 +1,4 @@
-use codebase_memory_rlm_mcp::{cli, McpServer};
+use rlm_mcp::{cli, McpServer};
 use tracing_subscriber::EnvFilter;
 
 fn main() {
@@ -14,7 +14,7 @@ fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::from_default_env()
-                .add_directive("codebase_memory_rlm_mcp=info".parse().unwrap()),
+                .add_directive("rlm_mcp=info".parse().unwrap()),
         )
         .with_writer(std::io::stderr)
         .init();

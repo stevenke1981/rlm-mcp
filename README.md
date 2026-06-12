@@ -1,4 +1,4 @@
-# codebase-memory-rlm-mcp
+# rlm-mcp
 
 Standalone **RLM (Recursive Language Model)** MCP server in **Rust**.
 
@@ -21,7 +21,7 @@ cd D:\rlm-mcp
 cargo build --release
 ```
 
-Binary: `target\release\codebase-memory-rlm-mcp.exe` (Windows) or `target/release/codebase-memory-rlm-mcp` (Unix).
+Binary: `target\release\rlm-mcp.exe` (Windows) or `target/release/rlm-mcp` (Unix).
 
 ## Install
 
@@ -31,7 +31,7 @@ Binary: `target\release\codebase-memory-rlm-mcp.exe` (Windows) or `target/releas
 .\install.ps1
 ```
 
-Installs to `%USERPROFILE%\.config\codebase-memory-rlm-mcp\bin\codebase-memory-rlm-mcp.exe`
+Installs to `%USERPROFILE%\.config\rlm-mcp\bin\rlm-mcp.exe`
 
 ### Linux / macOS
 
@@ -40,7 +40,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Installs to `~/.config/codebase-memory-rlm-mcp/bin/codebase-memory-rlm-mcp` and symlinks `~/.local/bin/codebase-memory-rlm-mcp`.
+Installs to `~/.config/rlm-mcp/bin/rlm-mcp` and symlinks `~/.local/bin/rlm-mcp`.
 
 ### MCP configuration
 
@@ -48,9 +48,9 @@ Templates: [`packaging/mcp/`](packaging/mcp/) (OpenCode, Codex, Claude, generic)
 
 ```json
 {
-  "codebase-memory-rlm-mcp": {
+  "rlm-mcp": {
     "type": "local",
-    "command": ["codebase-memory-rlm-mcp"],
+    "command": ["rlm-mcp"],
     "enabled": true,
     "timeout": 120000
   }
@@ -63,7 +63,7 @@ Replace `command` with the absolute path from `install.ps1` / `install.sh`, or u
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `RLM_CACHE_DIR` | `%LOCALAPPDATA%\codebase-memory-rlm-mcp` / `~/.cache/...` | Session cache root |
+| `RLM_CACHE_DIR` | `%LOCALAPPDATA%\rlm-mcp` / `~/.cache/...` | Session cache root |
 | `RLM_MAX_FILE_BYTES` | `524288` | Max single file size |
 | `RLM_MAX_TOTAL_BYTES` | `8388608` | Max total session bytes |
 | `RLM_MAX_CHUNKS` | `10000` | Max chunks per session |
@@ -92,21 +92,21 @@ Run without args to start MCP stdio server. With a subcommand, outputs JSON:
 
 ```powershell
 # Load directory
-codebase-memory-rlm-mcp scan --path . --json
+rlm-mcp scan --path . --json
 
 # Load inline text
-codebase-memory-rlm-mcp scan --content "long prompt text" --virtual-path prompt.txt --json
+rlm-mcp scan --content "long prompt text" --virtual-path prompt.txt --json
 
 # Filter
-codebase-memory-rlm-mcp peek --session-id <id> --query ERROR --limit 10 --json
+rlm-mcp peek --session-id <id> --query ERROR --limit 10 --json
 
 # Map
-codebase-memory-rlm-mcp chunk --session-id <id> --chunk-id c-0 --json
-codebase-memory-rlm-mcp map-plan --session-id <id> --batch-size 3 --json
+rlm-mcp chunk --session-id <id> --chunk-id c-0 --json
+rlm-mcp map-plan --session-id <id> --batch-size 3 --json
 
 # Reduce
-codebase-memory-rlm-mcp reduce-schema --json
-codebase-memory-rlm-mcp reduce-merge --workers '[{"batch_id":"b0","findings":[]}]' --json
+rlm-mcp reduce-schema --json
+rlm-mcp reduce-merge --workers '[{"batch_id":"b0","findings":[]}]' --json
 ```
 
 ## Architecture
@@ -114,7 +114,7 @@ codebase-memory-rlm-mcp reduce-merge --workers '[{"batch_id":"b0","findings":[]}
 ```
 Agent (LLM plans filter/map/reduce)
     ↓ MCP stdio or CLI
-codebase-memory-rlm-mcp
+rlm-mcp
     ↓ local sessions (RLM_CACHE_DIR/rlm-sessions)
 External files / logs / docs / text blobs
 ```

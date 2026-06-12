@@ -1,0 +1,43 @@
+{
+  "name": "search_code",
+  "description": "Graph-augmented code search. Modes: compact, files.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "file_pattern": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "limit": {
+        "default": 20,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "mode": {
+        "default": "compact",
+        "type": "string"
+      },
+      "path_filter": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "pattern": {
+        "type": "string"
+      },
+      "project": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "project",
+      "pattern"
+    ],
+    "title": "SearchCodeArgs",
+    "type": "object"
+  }
+}

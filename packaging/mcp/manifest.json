@@ -1,10 +1,10 @@
 {
   "schema_version": "0.1",
-  "name": "codebase-memory-rlm-mcp",
-  "display_name": "codebase-memory-rlm-mcp",
+  "name": "rlm-mcp",
+  "display_name": "rlm-mcp",
   "version": "0.1.0",
   "transport": "stdio",
-  "command": "codebase-memory-rlm-mcp",
+  "command": "rlm-mcp",
   "args": [],
   "env": {},
   "capabilities": {
@@ -21,8 +21,8 @@
     "rlm_session_delete"
   ],
   "install": {
-    "windows_binary": "target/release/codebase-memory-rlm-mcp.exe",
-    "unix_binary": "target/release/codebase-memory-rlm-mcp",
+    "windows_binary": "target/release/rlm-mcp.exe",
+    "unix_binary": "target/release/rlm-mcp",
     "recommended_command": "./install.ps1",
     "manual_templates": [
       "packaging/mcp/generic-mcp.json",

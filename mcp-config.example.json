@@ -1,5 +1,5 @@
 {
-  "codebase-memory-rlm-mcp": {
+  "rlm-mcp": {
     "type": "local",
     "command": ["{{RLM_BINARY}}"],
     "enabled": true,

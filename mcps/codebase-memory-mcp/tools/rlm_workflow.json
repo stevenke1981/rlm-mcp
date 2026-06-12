@@ -1,0 +1,15 @@
+{
+  "name": "rlm_workflow",
+  "description": "RLM workflow guidance.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "phase": {
+        "default": "overview",
+        "type": "string"
+      }
+    },
+    "title": "WorkflowArgs",
+    "type": "object"
+  }
+}

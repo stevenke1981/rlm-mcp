@@ -1,0 +1,8 @@
+{
+  "name": "rlm_session_list",
+  "description": "List RLM sessions.",
+  "inputSchema": {
+    "properties": {},
+    "type": "object"
+  }
+}

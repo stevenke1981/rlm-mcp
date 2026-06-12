@@ -1,0 +1,38 @@
+{
+  "name": "manage_adr",
+  "description": "Create or update Architecture Decision Records.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "content": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "mode": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "project": {
+        "type": "string"
+      },
+      "sections": {
+        "items": {
+          "type": "string"
+        },
+        "type": [
+          "array",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "project"
+    ],
+    "title": "ManageAdrArgs",
+    "type": "object"
+  }
+}

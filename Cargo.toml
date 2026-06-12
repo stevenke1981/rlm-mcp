@@ -1,19 +1,19 @@
 [package]
-name = "codebase-memory-rlm-mcp"
+name = "rlm-mcp"
 version = "0.1.0"
 edition = "2021"
-description = "codebase-memory-rlm-mcp — standalone Rust RLM MCP server (external context sessions)"
+description = "rlm-mcp — standalone Rust RLM MCP server (external context sessions)"
 license = "MIT"
 authors = ["RLM Contributors"]
-keywords = ["mcp", "rlm", "codebase", "codebase-memory-rlm-mcp"]
+keywords = ["mcp", "rlm", "codebase", "rlm-mcp"]
 categories = ["development-tools", "command-line-utilities"]
 
 [lib]
-name = "codebase_memory_rlm_mcp"
+name = "rlm_mcp"
 path = "src/lib.rs"
 
 [[bin]]
-name = "codebase-memory-rlm-mcp"
+name = "rlm-mcp"
 path = "src/main.rs"
 
 [dependencies]

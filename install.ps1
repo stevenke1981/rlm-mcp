@@ -1,11 +1,11 @@
-# Install codebase-memory-rlm-mcp MCP server + rlm skill (Windows).
+# Install rlm-mcp MCP server + rlm skill (Windows).
 
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SkillName = "rlm"
 $userHome = $env:USERPROFILE
-$BinDir = Join-Path $userHome ".config\codebase-memory-rlm-mcp\bin"
+$BinDir = Join-Path $userHome ".config\rlm-mcp\bin"
 
 Write-Host ""
 Write-Host "Building Rust release binary..." -ForegroundColor DarkGray
@@ -13,14 +13,14 @@ Push-Location $ScriptDir
 cargo build --release
 Pop-Location
 
-$Built = Join-Path $ScriptDir "target\release\codebase-memory-rlm-mcp.exe"
+$Built = Join-Path $ScriptDir "target\release\rlm-mcp.exe"
 if (-not (Test-Path $Built)) {
     throw "Build failed: $Built not found"
 }
 
 New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
-Copy-Item $Built (Join-Path $BinDir "codebase-memory-rlm-mcp.exe") -Force
-Write-Host "  ✓ Binary → $BinDir\codebase-memory-rlm-mcp.exe" -ForegroundColor Green
+Copy-Item $Built (Join-Path $BinDir "rlm-mcp.exe") -Force
+Write-Host "  ✓ Binary → $BinDir\rlm-mcp.exe" -ForegroundColor Green
 
 function Install-Skill {
     param([string]$TargetDir, [string]$Label)
@@ -37,10 +37,10 @@ Install-Skill (Join-Path $userHome ".agents\skills\$SkillName") "OpenCode / Code
 Install-Skill (Join-Path $userHome ".config\opencode\skills\$SkillName") "OpenCode native"
 
 Write-Host ""
-Write-Host "Binary installed: $BinDir\codebase-memory-rlm-mcp.exe" -ForegroundColor Green
+Write-Host "Binary installed: $BinDir\rlm-mcp.exe" -ForegroundColor Green
 Write-Host ""
 Write-Host "Add to agent MCP config (or copy from packaging\mcp\):" -ForegroundColor DarkGray
-Write-Host "  command: [\"$BinDir\codebase-memory-rlm-mcp.exe\"]" -ForegroundColor DarkGray
-Write-Host "  server name: codebase-memory-rlm-mcp" -ForegroundColor DarkGray
+Write-Host "  command: [\"$BinDir\rlm-mcp.exe\"]" -ForegroundColor DarkGray
+Write-Host "  server name: rlm-mcp" -ForegroundColor DarkGray
 Write-Host "Standalone RLM — no CBM dependency. Optional dual setup: cbm-mcp/packaging/mcp/dual-servers.example.json" -ForegroundColor DarkGray
 Write-Host ""

@@ -1,0 +1,44 @@
+{
+  "name": "index_repository",
+  "description": "Index a repository into the knowledge graph.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "mode": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "persistence": {
+        "type": [
+          "boolean",
+          "null"
+        ]
+      },
+      "project": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "repo_path": {
+        "type": "string"
+      },
+      "target_projects": {
+        "items": {
+          "type": "string"
+        },
+        "type": [
+          "array",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "repo_path"
+    ],
+    "title": "IndexRepositoryArgs",
+    "type": "object"
+  }
+}

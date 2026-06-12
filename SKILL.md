@@ -8,7 +8,7 @@ description: >
 license: MIT
 compatibility: opencode, codex, claude-code
 metadata:
-  mcp-server: codebase-memory-rlm-mcp
+  mcp-server: rlm-mcp
   paper: https://arxiv.org/pdf/2512.24601
 ---
 
@@ -16,7 +16,7 @@ metadata:
 
 **Context is external.** Never bulk-load files into root context. Use MCP tools only.
 
-This skill uses **codebase-memory-rlm-mcp** alone — no graph index required.
+This skill uses **rlm-mcp** alone — no graph index required.
 
 ## RLM loop
 

@@ -1,0 +1,21 @@
+{
+  "name": "rlm_read_symbol",
+  "description": "RLM map unit — one symbol.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "project": {
+        "type": "string"
+      },
+      "qualified_name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "project",
+      "qualified_name"
+    ],
+    "title": "SnippetArgs",
+    "type": "object"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "query_graph",
+  "description": "Execute a read-only graph query (SELECT on symbols/edges/files).",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "max_rows": {
+        "format": "uint",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "project": {
+        "type": "string"
+      },
+      "query": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "project",
+      "query"
+    ],
+    "title": "QueryGraphArgs",
+    "type": "object"
+  }
+}

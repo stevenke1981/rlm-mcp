@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "codebase-memory-rlm-mcp": {
+    "rlm-mcp": {
       "command": "{{RLM_BINARY}}",
       "args": [],
       "env": {}

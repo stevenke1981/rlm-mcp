@@ -1,6 +1,6 @@
-use codebase_memory_rlm_mcp::benchmark::{run_suite, BaselineKind, SniahSize};
-use codebase_memory_rlm_mcp::rlm::RlmEngine;
-use codebase_memory_rlm_mcp::test_lock;
+use rlm_mcp::benchmark::{run_suite, BaselineKind, SniahSize};
+use rlm_mcp::rlm::RlmEngine;
+use rlm_mcp::test_lock;
 use tempfile::TempDir;
 
 fn with_cache<F: FnOnce(&RlmEngine)>(f: F) {
@@ -67,7 +67,7 @@ fn sniah_mini_suite_runs_all_baselines() {
 
 #[test]
 fn sniah_generates_buried_needle_fixture() {
-    use codebase_memory_rlm_mcp::benchmark::generate_fixture;
+    use rlm_mcp::benchmark::generate_fixture;
     let f = generate_fixture(SniahSize::Mini);
     let lines: Vec<_> = f.haystack.lines().collect();
     let needle_idx = lines

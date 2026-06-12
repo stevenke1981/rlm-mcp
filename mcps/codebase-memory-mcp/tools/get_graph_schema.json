@@ -1,0 +1,17 @@
+{
+  "name": "get_graph_schema",
+  "description": "Get the schema of the knowledge graph.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "project": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "project"
+    ],
+    "title": "ProjectArgs",
+    "type": "object"
+  }
+}

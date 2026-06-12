@@ -1,0 +1,17 @@
+{
+  "name": "index_status",
+  "description": "Check index status for a project.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "project": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "project"
+    ],
+    "title": "ProjectArgs",
+    "type": "object"
+  }
+}

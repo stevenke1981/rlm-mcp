@@ -6,5 +6,5 @@ pub fn default_cache_dir() -> PathBuf {
     }
     dirs::cache_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("codebase-memory-rlm-mcp")
+        .join("rlm-mcp")
 }

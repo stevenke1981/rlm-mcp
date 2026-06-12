@@ -36,7 +36,7 @@ Definition of done:
 ## P0 - Product boundary and naming
 
 - [x] Keep this repo independent from `cbm-mcp`.
-- [x] Keep MCP server name `codebase-memory-rlm-mcp` unless deliberately renamed in all templates and docs.
+- [x] Keep MCP server name `rlm-mcp` (renamed from `codebase-memory-rlm-mcp` in all templates and docs).
 - [x] Use only RLM tools here:
   - `rlm_workflow`
   - `rlm_scan`

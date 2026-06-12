@@ -29,3 +29,9 @@
 **Trigger:** S-NIAH benchmark compared trajectory `bytes_in` (includes full scan load) against direct baseline; peek with `include_content` returned entire chunk.
 **Rule:** Benchmark cost metrics must use model-visible context bytes (peek previews / chunk evidence), not external storage load or full-chunk content when filtering.
 **Source:** P1 benchmark mini-suite
+
+---
+## Lesson #6 — 2026-06-12
+**Trigger:** Project still used `codebase-memory-rlm-mcp` crate/binary name while repo directory is `rlm-mcp`.
+**Rule:** When renaming the project, update Cargo.toml package/lib/bin names, SERVER_NAME, default cache dir, install scripts, and all MCP templates in one commit before release.
+**Source:** project rename to rlm-mcp

@@ -1,6 +1,6 @@
-use codebase_memory_rlm_mcp::rlm::PeekOptions;
-use codebase_memory_rlm_mcp::rlm::RlmEngine;
-use codebase_memory_rlm_mcp::test_lock;
+use rlm_mcp::rlm::PeekOptions;
+use rlm_mcp::rlm::RlmEngine;
+use rlm_mcp::test_lock;
 use serde_json::json;
 use tempfile::TempDir;
 
@@ -271,7 +271,7 @@ fn trajectory_records_full_loop() {
 #[test]
 fn budget_limits_and_cancel() {
     with_cache(|engine| {
-        use codebase_memory_rlm_mcp::rlm::{BudgetMode, SessionBudget, TaskBudget};
+        use rlm_mcp::rlm::{BudgetMode, SessionBudget, TaskBudget};
 
         let scan = engine
             .scan(None, Some("line\n"), Some("x.txt"), None)

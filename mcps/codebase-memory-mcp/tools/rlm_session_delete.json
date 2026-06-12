@@ -1,0 +1,17 @@
+{
+  "name": "rlm_session_delete",
+  "description": "Delete RLM session.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "session_id"
+    ],
+    "title": "RlmSessionIdArgs",
+    "type": "object"
+  }
+}

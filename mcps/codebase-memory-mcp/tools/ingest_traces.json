@@ -1,0 +1,22 @@
+{
+  "name": "ingest_traces",
+  "description": "Ingest runtime traces to enhance the knowledge graph.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "project": {
+        "type": "string"
+      },
+      "traces": {
+        "items": true,
+        "type": "array"
+      }
+    },
+    "required": [
+      "project",
+      "traces"
+    ],
+    "title": "IngestTracesArgs",
+    "type": "object"
+  }
+}

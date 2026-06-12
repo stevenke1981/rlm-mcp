@@ -7,7 +7,7 @@ use std::io::{self, Read};
 pub fn run_cli(args: &[String]) -> Result<()> {
     if args.is_empty() {
         return Err(Error::InvalidArgument(
-            "usage: codebase-memory-rlm-mcp <command> [options]\n\
+            "usage: rlm-mcp <command> [options]\n\
              commands: scan, peek, chunk, env-info, slice, map-plan, reduce-schema, reduce-merge, \
              session-list, session-delete, task-create, task-list, task-result, task-reduce, \
              trajectory-get, trajectory-final, budget-configure, budget-status, task-cancel, \

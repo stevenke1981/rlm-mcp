@@ -1,0 +1,17 @@
+{
+  "name": "delete_project",
+  "description": "Delete a project index.",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "project": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "project"
+    ],
+    "title": "ProjectArgs",
+    "type": "object"
+  }
+}
