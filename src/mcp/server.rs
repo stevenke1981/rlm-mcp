@@ -18,10 +18,7 @@ impl McpServer {
     }
 
     pub fn run(&self) -> Result<()> {
-        loop {
-            let Some(line) = read_stdin_message()? else {
-                break;
-            };
+        while let Some(line) = read_stdin_message()? {
             let response = self.handle_message(&line)?;
             if let Some(body) = response {
                 write_stdout_message(&body)?;
@@ -141,6 +138,10 @@ mod tests {
         let resp = server.handle_message(&req.to_string()).unwrap().unwrap();
         assert!(resp.contains("rlm_workflow"));
         assert!(resp.contains("rlm_scan"));
+        assert!(resp.contains("rlm_env_info"));
+        assert!(resp.contains("rlm_map_plan"));
+        assert!(resp.contains("rlm_reduce_merge"));
+        assert!(resp.contains("rlm_task_create"));
         assert!(!resp.contains("rlm_filter"));
         assert!(!resp.contains("index_repository"));
     }

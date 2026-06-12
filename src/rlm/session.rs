@@ -2,16 +2,15 @@ use crate::discover::{
     configure_walker, language_for_path, IndexMode, SKIP_FILENAMES, SKIP_SUFFIXES,
 };
 use crate::error::{Error, Result};
+use crate::rlm::config::RlmConfig;
 use std::collections::HashMap;
 use std::path::Path;
 use uuid::Uuid;
 
-const CHUNK_LINES: usize = 200;
-const MAX_FILE_BYTES: u64 = 512 * 1024;
-const MAX_TOTAL_BYTES: usize = 8 * 1024 * 1024;
-
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Chunk {
+    #[serde(default)]
+    pub id: String,
     pub path: String,
     pub offset: usize,
     pub line_count: usize,
@@ -22,13 +21,23 @@ pub struct Chunk {
 pub struct ScanSession {
     pub id: String,
     pub root_path: String,
+    #[serde(default = "default_source_kind")]
+    pub source_kind: String,
     pub chunks: Vec<Chunk>,
     pub total_bytes: usize,
     pub files_scanned: usize,
     pub files_skipped: usize,
     pub skip_reasons: HashMap<String, usize>,
+    #[serde(default)]
+    pub variables: HashMap<String, String>,
     #[serde(default = "default_created_at")]
     pub created_at_unix: u64,
+    #[serde(default)]
+    pub expires_at_unix: u64,
+}
+
+fn default_source_kind() -> String {
+    "path".into()
 }
 
 fn default_created_at() -> u64 {
@@ -37,24 +46,30 @@ fn default_created_at() -> u64 {
 
 pub struct SessionStore {
     sessions: HashMap<String, ScanSession>,
+    config: RlmConfig,
 }
 
 impl SessionStore {
     pub fn new() -> Self {
+        Self::with_config(RlmConfig::default())
+    }
+
+    pub fn with_config(config: RlmConfig) -> Self {
         let mut sessions = HashMap::new();
         if let Ok(loaded) = super::persistence::load_persisted_sessions() {
-            for session in loaded {
+            for mut session in loaded {
+                normalize_session(&mut session);
                 sessions.insert(session.id.clone(), session);
             }
         }
-        let mut store = Self { sessions };
+        let mut store = Self { sessions, config };
         let _ = store.purge_expired();
         store
     }
 
     fn purge_expired(&mut self) -> Result<()> {
-        super::persistence::purge_expired(&mut self.sessions)?;
-        super::persistence::trim_to_limit(&mut self.sessions)?;
+        super::persistence::purge_expired(&mut self.sessions, self.config.session_ttl_secs)?;
+        super::persistence::trim_to_limit(&mut self.sessions, self.config.max_sessions)?;
         Ok(())
     }
 
@@ -84,8 +99,13 @@ impl SessionStore {
         };
 
         for file_path in walker {
-            if total_bytes >= MAX_TOTAL_BYTES {
+            if total_bytes >= self.config.max_total_bytes {
                 *skip_reasons.entry("budget_exceeded".into()).or_default() += 1;
+                files_skipped += 1;
+                continue;
+            }
+            if chunks.len() >= self.config.max_chunks {
+                *skip_reasons.entry("chunk_limit".into()).or_default() += 1;
                 files_skipped += 1;
                 continue;
             }
@@ -115,7 +135,7 @@ impl SessionStore {
                     continue;
                 }
             };
-            if meta.len() > MAX_FILE_BYTES {
+            if meta.len() > self.config.max_file_bytes {
                 *skip_reasons.entry("file_too_large".into()).or_default() += 1;
                 files_skipped += 1;
                 continue;
@@ -150,30 +170,93 @@ impl SessionStore {
                 .unwrap_or(&file_path)
                 .to_string_lossy()
                 .replace('\\', "/");
-            let lines: Vec<&str> = content.lines().collect();
-            if lines.is_empty() {
-                continue;
-            }
-            for (i, window) in lines.chunks(CHUNK_LINES).enumerate() {
-                chunks.push(Chunk {
-                    path: rel.clone(),
-                    offset: i * CHUNK_LINES,
-                    line_count: window.len(),
-                    content: window.join("\n"),
-                });
-            }
+            append_chunks(
+                &mut chunks,
+                &rel,
+                &content,
+                self.config.chunk_lines,
+                self.config.max_chunks,
+            );
         }
 
-        let session = ScanSession {
-            id: Uuid::new_v4().to_string(),
-            root_path: root.to_string_lossy().to_string(),
+        self.finalize_session(
+            root.to_string_lossy().to_string(),
+            "path",
             chunks,
             total_bytes,
             files_scanned,
             files_skipped,
             skip_reasons,
-            created_at_unix: super::persistence::unix_now(),
+            HashMap::new(),
+        )
+    }
+
+    pub fn create_from_text(
+        &mut self,
+        content: &str,
+        virtual_path: &str,
+        variables: HashMap<String, String>,
+    ) -> Result<ScanSession> {
+        if content.contains('\0') {
+            return Err(Error::InvalidArgument(
+                "binary content not supported".into(),
+            ));
+        }
+        if content.len() > self.config.max_total_bytes {
+            return Err(Error::InvalidArgument(format!(
+                "content exceeds max total bytes ({})",
+                self.config.max_total_bytes
+            )));
+        }
+
+        let mut chunks = Vec::new();
+        append_chunks(
+            &mut chunks,
+            virtual_path,
+            content,
+            self.config.chunk_lines,
+            self.config.max_chunks,
+        );
+
+        self.finalize_session(
+            format!("text://{virtual_path}"),
+            "text",
+            chunks,
+            content.len(),
+            1,
+            0,
+            HashMap::new(),
+            variables,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn finalize_session(
+        &mut self,
+        root_path: String,
+        source_kind: &str,
+        chunks: Vec<Chunk>,
+        total_bytes: usize,
+        files_scanned: usize,
+        files_skipped: usize,
+        skip_reasons: HashMap<String, usize>,
+        variables: HashMap<String, String>,
+    ) -> Result<ScanSession> {
+        let now = super::persistence::unix_now();
+        let mut session = ScanSession {
+            id: Uuid::new_v4().to_string(),
+            root_path,
+            source_kind: source_kind.into(),
+            chunks,
+            total_bytes,
+            files_scanned,
+            files_skipped,
+            skip_reasons,
+            variables,
+            created_at_unix: now,
+            expires_at_unix: now.saturating_add(self.config.session_ttl_secs),
         };
+        assign_chunk_ids(&mut session);
         self.sessions.insert(session.id.clone(), session.clone());
         super::persistence::persist_session(&session)?;
         let _ = self.purge_expired();
@@ -186,6 +269,15 @@ impl SessionStore {
             .ok_or_else(|| Error::SessionNotFound(id.to_string()))
     }
 
+    pub fn get_chunk(&self, session_id: &str, chunk_id: &str) -> Result<&Chunk> {
+        let session = self.get(session_id)?;
+        session
+            .chunks
+            .iter()
+            .find(|c| c.id == chunk_id)
+            .ok_or_else(|| Error::InvalidArgument(format!("chunk not found: {chunk_id}")))
+    }
+
     pub fn list(&self) -> Vec<serde_json::Value> {
         self.sessions
             .values()
@@ -193,10 +285,13 @@ impl SessionStore {
                 serde_json::json!({
                     "id": s.id,
                     "root_path": s.root_path,
+                    "source_kind": s.source_kind,
                     "chunk_count": s.chunks.len(),
                     "total_bytes": s.total_bytes,
                     "files_scanned": s.files_scanned,
                     "files_skipped": s.files_skipped,
+                    "created_at_unix": s.created_at_unix,
+                    "expires_at_unix": s.expires_at_unix,
                 })
             })
             .collect()
@@ -215,6 +310,48 @@ impl Default for SessionStore {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub(crate) fn append_chunks(
+    chunks: &mut Vec<Chunk>,
+    path: &str,
+    content: &str,
+    chunk_lines: usize,
+    max_chunks: usize,
+) {
+    let lines: Vec<&str> = content.lines().collect();
+    if lines.is_empty() {
+        return;
+    }
+    for (i, window) in lines.chunks(chunk_lines.max(1)).enumerate() {
+        if chunks.len() >= max_chunks {
+            break;
+        }
+        chunks.push(Chunk {
+            id: String::new(),
+            path: path.to_string(),
+            offset: i * chunk_lines,
+            line_count: window.len(),
+            content: window.join("\n"),
+        });
+    }
+}
+
+fn assign_chunk_ids(session: &mut ScanSession) {
+    for (i, chunk) in session.chunks.iter_mut().enumerate() {
+        if chunk.id.is_empty() {
+            chunk.id = format!("c-{i}");
+        }
+    }
+}
+
+fn normalize_session(session: &mut ScanSession) {
+    if session.expires_at_unix == 0 {
+        session.expires_at_unix = session
+            .created_at_unix
+            .saturating_add(RlmConfig::default().session_ttl_secs);
+    }
+    assign_chunk_ids(session);
 }
 
 #[cfg(test)]
@@ -237,6 +374,7 @@ mod tests {
             .create_from_path(dir.path().to_string_lossy().as_ref())
             .unwrap();
         let id = session.id.clone();
+        assert!(!session.chunks[0].id.is_empty());
         drop(store);
 
         let store2 = SessionStore::new();
@@ -244,6 +382,24 @@ mod tests {
             .get(&id)
             .expect("session should persist across invocations");
         assert!(!loaded.chunks.is_empty());
+        assert_eq!(loaded.chunks[0].id, "c-0");
+
+        std::env::remove_var("RLM_CACHE_DIR");
+    }
+
+    #[test]
+    fn create_from_text_assigns_chunk_ids() {
+        let _guard = test_lock::acquire();
+        let cache = TempDir::new().unwrap();
+        std::env::set_var("RLM_CACHE_DIR", cache.path());
+
+        let mut store = SessionStore::new();
+        let session = store
+            .create_from_text("line one\nline two\n", "prompt.txt", HashMap::new())
+            .unwrap();
+        assert_eq!(session.source_kind, "text");
+        assert!(!session.chunks.is_empty());
+        assert_eq!(session.chunks[0].id, "c-0");
 
         std::env::remove_var("RLM_CACHE_DIR");
     }

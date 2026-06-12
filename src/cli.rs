@@ -1,0 +1,199 @@
+use crate::error::{Error, Result};
+use crate::rlm::PeekOptions;
+use crate::rlm::RlmEngine;
+use serde_json::Value;
+use std::io::{self, Read};
+
+pub fn run_cli(args: &[String]) -> Result<()> {
+    if args.is_empty() {
+        return Err(Error::InvalidArgument(
+            "usage: codebase-memory-rlm-mcp <command> [options]\n\
+             commands: scan, peek, chunk, env-info, slice, map-plan, reduce-schema, reduce-merge, \
+             session-list, session-delete, task-create, task-list, task-result, task-reduce, workflow"
+                .into(),
+        ));
+    }
+
+    let command = args[0].as_str();
+    let flags = parse_flags(&args[1..]);
+    let json_mode = flags.get_bool("json") || flags.get_bool("quiet");
+    let engine = RlmEngine::new();
+
+    let result = match command {
+        "scan" => {
+            let path = flags.get_str("path");
+            let content = flags
+                .get_str("content")
+                .map(|s| s.to_string())
+                .or_else(|| read_stdin_content(&flags).ok())
+                .map(|s| s.to_string());
+            engine.scan(
+                path,
+                content.as_deref(),
+                flags.get_str("virtual-path"),
+                flags.get_str("variable"),
+            )?
+        }
+        "peek" => {
+            let session_id = flags.require_str("session-id")?;
+            engine.peek(
+                session_id,
+                PeekOptions {
+                    query: flags.get_str("query"),
+                    path_filter: flags.get_str("path"),
+                    glob: flags.get_str("glob"),
+                    regex: flags.get_bool("regex"),
+                    case_sensitive: !flags.get_bool("ignore-case"),
+                    line_start: flags.get_usize("line-start"),
+                    line_end: flags.get_usize("line-end"),
+                    context_radius: flags.get_usize("context").unwrap_or(2),
+                    limit: flags.get_usize("limit").unwrap_or(20),
+                    include_content: flags.get_bool("full"),
+                },
+            )?
+        }
+        "chunk" => engine.chunk(
+            flags.require_str("session-id")?,
+            flags.get_str("file-pattern"),
+            flags.get_str_list("chunk-id").as_deref(),
+            flags.get_usize("offset").unwrap_or(0),
+            flags.get_usize("limit").unwrap_or(5),
+            flags.get_bool("metadata"),
+        )?,
+        "env-info" => engine.env_info(flags.require_str("session-id")?)?,
+        "slice" => engine.slice(
+            flags.require_str("session-id")?,
+            flags.require_str("chunk-id")?,
+            flags.get_usize("start").unwrap_or(1),
+            flags.get_usize("end").unwrap_or(1),
+        )?,
+        "map-plan" => engine.map_plan(
+            flags.require_str("session-id")?,
+            flags.get_str_list("chunk-id").as_deref(),
+            flags.get_str("file-pattern"),
+            flags.get_usize("batch-size").unwrap_or(3),
+        )?,
+        "reduce-schema" => engine.reduce_schema(),
+        "reduce-merge" => {
+            let workers = flags
+                .get_str("workers")
+                .map(serde_json::from_str::<Vec<Value>>)
+                .transpose()?
+                .unwrap_or_default();
+            engine.reduce_merge(&workers)
+        }
+        "session-list" => engine.session_list(),
+        "session-delete" => engine.session_delete(flags.require_str("session-id")?)?,
+        "task-create" => engine.task_create(
+            flags.require_str("session-id")?,
+            flags.require_str("prompt")?,
+            &flags.get_str_list("chunk-id").unwrap_or_default(),
+            flags.get_str("parent-task-id"),
+            flags.get_str("provider").unwrap_or("mock"),
+            None,
+            !flags.get_bool("no-execute"),
+        )?,
+        "task-list" => engine.task_list(flags.get_str("session-id"), flags.get_str("root-id")),
+        "task-result" => engine.task_result(flags.require_str("task-id")?)?,
+        "task-reduce" => engine.task_reduce(flags.require_str("root-id")?)?,
+        "workflow" => engine.workflow(flags.get_str("phase").unwrap_or("overview")),
+        _ => {
+            return Err(Error::InvalidArgument(format!(
+                "unknown command: {command}"
+            )))
+        }
+    };
+
+    if json_mode {
+        println!("{}", serde_json::to_string(&result)?);
+    } else {
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    }
+    Ok(())
+}
+
+fn read_stdin_content(flags: &Flags) -> Result<String> {
+    if flags.get_bool("stdin") {
+        let mut buf = String::new();
+        io::stdin().read_to_string(&mut buf)?;
+        Ok(buf)
+    } else {
+        Err(Error::InvalidArgument("no content".into()))
+    }
+}
+
+struct Flags {
+    values: std::collections::HashMap<String, Vec<String>>,
+}
+
+impl Flags {
+    fn get_str(&self, key: &str) -> Option<&str> {
+        self.values
+            .get(key)
+            .and_then(|v| v.last())
+            .map(|s| s.as_str())
+    }
+
+    fn get_str_list(&self, key: &str) -> Option<Vec<String>> {
+        self.values.get(key).cloned()
+    }
+
+    fn get_bool(&self, key: &str) -> bool {
+        self.values.contains_key(key)
+    }
+
+    fn get_usize(&self, key: &str) -> Option<usize> {
+        self.get_str(key).and_then(|v| v.parse().ok())
+    }
+
+    fn require_str(&self, key: &str) -> Result<&str> {
+        self.get_str(key)
+            .ok_or_else(|| Error::InvalidArgument(format!("missing --{key}")))
+    }
+}
+
+fn parse_flags(args: &[String]) -> Flags {
+    let mut values: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
+    let mut i = 0;
+    while i < args.len() {
+        let arg = &args[i];
+        if let Some(key) = arg.strip_prefix("--") {
+            let (name, inline_val) = match key.split_once('=') {
+                Some((n, v)) => (n.to_string(), Some(v.to_string())),
+                None => (key.to_string(), None),
+            };
+            let val = if let Some(v) = inline_val {
+                v
+            } else if i + 1 < args.len() && !args[i + 1].starts_with("--") {
+                i += 1;
+                args[i].clone()
+            } else {
+                "true".into()
+            };
+            values.entry(name).or_default().push(val);
+        }
+        i += 1;
+    }
+    Flags { values }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_flags() {
+        let args = vec![
+            "--session-id".into(),
+            "abc".into(),
+            "--limit".into(),
+            "5".into(),
+            "--json".into(),
+        ];
+        let flags = parse_flags(&args);
+        assert_eq!(flags.get_str("session-id"), Some("abc"));
+        assert_eq!(flags.get_usize("limit"), Some(5));
+        assert!(flags.get_bool("json"));
+    }
+}

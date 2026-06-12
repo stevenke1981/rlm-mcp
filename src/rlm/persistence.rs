@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
+#[cfg(test)]
 pub const SESSION_TTL_SECS: u64 = 3600;
-pub const MAX_PERSISTED_SESSIONS: usize = 50;
 
 pub fn sessions_dir() -> PathBuf {
     crate::project::default_cache_dir().join("rlm-sessions")
@@ -68,11 +68,20 @@ pub fn load_persisted_sessions() -> Result<Vec<ScanSession>> {
     Ok(sessions)
 }
 
-pub fn purge_expired(sessions: &mut std::collections::HashMap<String, ScanSession>) -> Result<()> {
+pub fn purge_expired(
+    sessions: &mut std::collections::HashMap<String, ScanSession>,
+    ttl_secs: u64,
+) -> Result<()> {
     let now = unix_now();
     let expired: Vec<String> = sessions
         .iter()
-        .filter(|(_, s)| now.saturating_sub(s.created_at_unix) > SESSION_TTL_SECS)
+        .filter(|(_, s)| {
+            if s.expires_at_unix > 0 {
+                now >= s.expires_at_unix
+            } else {
+                now.saturating_sub(s.created_at_unix) > ttl_secs
+            }
+        })
         .map(|(id, _)| id.clone())
         .collect();
     for id in expired {
@@ -82,8 +91,11 @@ pub fn purge_expired(sessions: &mut std::collections::HashMap<String, ScanSessio
     Ok(())
 }
 
-pub fn trim_to_limit(sessions: &mut std::collections::HashMap<String, ScanSession>) -> Result<()> {
-    if sessions.len() <= MAX_PERSISTED_SESSIONS {
+pub fn trim_to_limit(
+    sessions: &mut std::collections::HashMap<String, ScanSession>,
+    max_sessions: usize,
+) -> Result<()> {
+    if sessions.len() <= max_sessions {
         return Ok(());
     }
     let mut ids: Vec<_> = sessions
@@ -91,7 +103,7 @@ pub fn trim_to_limit(sessions: &mut std::collections::HashMap<String, ScanSessio
         .map(|s| (s.id.clone(), s.created_at_unix))
         .collect();
     ids.sort_by_key(|(_, created)| *created);
-    let remove_count = sessions.len() - MAX_PERSISTED_SESSIONS;
+    let remove_count = sessions.len() - max_sessions;
     for (id, _) in ids.into_iter().take(remove_count) {
         sessions.remove(&id);
         let _ = remove_session_file(&id);
@@ -110,7 +122,9 @@ mod tests {
         ScanSession {
             id: id.into(),
             root_path: "/tmp".into(),
+            source_kind: "path".into(),
             chunks: vec![Chunk {
+                id: "c-0".into(),
                 path: "a.txt".into(),
                 offset: 0,
                 line_count: 1,
@@ -120,7 +134,9 @@ mod tests {
             files_scanned: 1,
             files_skipped: 0,
             skip_reasons: std::collections::HashMap::new(),
+            variables: std::collections::HashMap::new(),
             created_at_unix: unix_now(),
+            expires_at_unix: unix_now().saturating_add(SESSION_TTL_SECS),
         }
     }
 
