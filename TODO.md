@@ -317,7 +317,7 @@ Acceptance criteria:
   - `tools/call rlm_scan`
   - `tools/call rlm_peek`
   - `tools/call rlm_chunk`
-- [ ] Add schema docs for every tool.
+- [x] Add schema docs for every tool.
 
 Acceptance criteria:
 

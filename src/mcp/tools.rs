@@ -123,6 +123,7 @@ impl ToolHandler {
                 let fixture_size = args.get("fixture_size").and_then(|v| v.as_str());
                 crate::benchmark::run_suite(&self.rlm, suite, fixture_size)
             }
+            "rlm_tools_reference" => Ok(crate::mcp::schema_docs::tools_reference()),
             _ => Err(Error::InvalidArgument(format!("unknown tool: {name}"))),
         }
     }
@@ -608,6 +609,11 @@ pub fn tool_definitions() -> Vec<Value> {
                     "fixture_size": { "type": "string", "default": "mini", "enum": ["mini", "small"] }
                 }
             }),
+        ),
+        tool_def(
+            "rlm_tools_reference",
+            "Return structured schema reference for every MCP tool (CLI mapping, returns, examples).",
+            json!({ "type": "object", "properties": {} }),
         ),
     ]
 }

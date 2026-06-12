@@ -11,7 +11,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
              commands: scan, peek, chunk, env-info, slice, map-plan, reduce-schema, reduce-merge, \
              session-list, session-delete, task-create, task-list, task-result, task-reduce, \
              trajectory-get, trajectory-final, budget-configure, budget-status, task-cancel, \
-             benchmark, workflow"
+             benchmark, tools-reference, workflow"
                 .into(),
         ));
     }
@@ -152,6 +152,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
                 other => crate::benchmark::run_suite(&engine, other, flags.get_str("size"))?,
             }
         }
+        "tools-reference" => crate::mcp::schema_docs::tools_reference(),
         "workflow" => engine.workflow(flags.get_str("phase").unwrap_or("overview")),
         _ => {
             return Err(Error::InvalidArgument(format!(

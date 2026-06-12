@@ -67,6 +67,31 @@ fn mcp_tools_list_matches_snapshot_tools() {
 }
 
 #[test]
+fn mcp_tools_reference_covers_all_tools() {
+    let server = McpServer::new();
+    let req = json!({
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+            "name": "rlm_tools_reference",
+            "arguments": {}
+        }
+    });
+    let body = server
+        .handle_message(&req.to_string())
+        .unwrap()
+        .expect("reference response");
+    let resp = parse_response(&body);
+    let text = resp["result"]["content"][0]["text"].as_str().unwrap();
+    let reference: Value = serde_json::from_str(text).unwrap();
+    assert_eq!(
+        reference["tool_count"].as_u64().unwrap(),
+        normalized_tools_snapshot()["tool_count"].as_u64().unwrap()
+    );
+}
+
+#[test]
 fn mcp_scan_peek_chunk_smoke() {
     let server = McpServer::new();
 

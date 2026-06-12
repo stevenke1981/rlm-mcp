@@ -82,9 +82,11 @@ Replace `command` with the absolute path from `install.ps1` / `install.sh`, or u
 | Recurse | `rlm_task_create`, `rlm_task_list`, `rlm_task_result`, `rlm_task_reduce` | Sub-tasks with mock/dry-run provider |
 | Observe | `rlm_trajectory_get`, `rlm_trajectory_final`, `rlm_budget_status` | Trajectory + budget/tail-cost reporting |
 | Control | `rlm_budget_configure`, `rlm_task_cancel` | Session limits, fail-fast/soft-warning, cancel trees |
-| Help | `rlm_workflow` | Phase guidance |
+| Help | `rlm_workflow`, `rlm_tools_reference` | Phase guidance + full tool schema |
 
-Also: `rlm_session_list`, `rlm_session_delete`
+Also: `rlm_session_list`, `rlm_session_delete`, `rlm_benchmark_list`, `rlm_benchmark_run`
+
+Full parameter reference: [`docs/tools.md`](docs/tools.md)
 
 ## CLI (non-MCP)
 

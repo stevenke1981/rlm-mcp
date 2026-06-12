@@ -1,6 +1,6 @@
 {
   "server": "rlm-mcp",
-  "tool_count": 22,
+  "tool_count": 23,
   "tools": [
     {
       "description": "List available RLM benchmark suites (S-NIAH mini-suite for CI).",
@@ -447,6 +447,14 @@
         "type": "object"
       },
       "name": "rlm_task_result"
+    },
+    {
+      "description": "Return structured schema reference for every MCP tool (CLI mapping, returns, examples).",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "rlm_tools_reference"
     },
     {
       "description": "Record final answer event in trajectory log.",
