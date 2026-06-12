@@ -8,7 +8,7 @@ Binary: `rlm-mcp` or absolute path to release binary
 
 ## Contract snapshot
 
-`tools-list.snapshot.json` is the canonical `tools/list` contract (31 tools).
+`tools-list.snapshot.json` is the canonical `tools/list` contract (33 tools).
 
 Human-readable schema: [`docs/tools.md`](../../docs/tools.md). Machine-readable: MCP `rlm_tools_reference` or `rlm-mcp tools-reference --json`.
 CI compares live `tool_definitions()` against this file. Refresh after adding tools:

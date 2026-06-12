@@ -51,9 +51,13 @@ fn phase_for(name: &str) -> &'static str {
         | "rlm_session_cleanup"
         | "rlm_session_export"
         | "rlm_session_import" => "load",
-        "rlm_peek" | "rlm_slice" | "rlm_transform" | "rlm_artifact_read" | "rlm_artifact_write" => {
-            "repl"
-        }
+        "rlm_peek"
+        | "rlm_slice"
+        | "rlm_transform"
+        | "rlm_repl_info"
+        | "rlm_repl_execute"
+        | "rlm_artifact_read"
+        | "rlm_artifact_write" => "repl",
         "rlm_chunk" | "rlm_map_plan" | "rlm_map_claim" | "rlm_map_complete" => "map",
         "rlm_reduce_schema" | "rlm_reduce_merge" => "reduce",
         "rlm_task_create"
@@ -133,6 +137,20 @@ fn tool_meta(
             "transformed content with operation metadata",
             json!({ "session_id": "<session_id>", "operation": "dedupe_lines", "chunk_id": "c-0" }),
             "rlm-mcp transform --session-id <id> --chunk-id c-0 --op dedupe_lines --json",
+        ),
+        "rlm_repl_info" => (
+            "repl-info",
+            &[],
+            "backends, capability flags, limits, opt-in env vars",
+            json!({}),
+            "rlm-mcp repl-info --json",
+        ),
+        "rlm_repl_execute" => (
+            "repl-exec",
+            &["--session-id", "--code", "--language", "--backend"],
+            "sandbox output with audit metadata (opt-in executable backends)",
+            json!({ "session_id": "<session_id>", "code": "print('hi')", "backend": "command" }),
+            "rlm-mcp repl-exec --session-id <id> --code \"echo hi\" --backend command --json",
         ),
         "rlm_artifact_write" => (
             "artifact-write",

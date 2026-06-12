@@ -8,7 +8,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
     if args.is_empty() {
         return Err(Error::InvalidArgument(
             "usage: rlm-mcp <command> [options]\n\
-             commands: scan, peek, chunk, env-info, slice, transform, artifact-write, artifact-read, \
+             commands: scan, peek, chunk, env-info, slice, transform, repl-info, repl-exec, artifact-write, artifact-read, \
              map-plan, map-claim, map-complete, reduce-schema, reduce-merge, \
              session-list, session-delete, session-cleanup, session-export, session-import, \
              task-create, task-list, task-result, task-reduce, \
@@ -87,6 +87,13 @@ pub fn run_cli(args: &[String]) -> Result<()> {
                 flags.get_str("content"),
             )?
         }
+        "repl-info" => engine.repl_info(),
+        "repl-exec" => engine.repl_execute(
+            flags.require_str("session-id")?,
+            flags.require_str("code")?,
+            flags.get_str("language"),
+            flags.get_str("backend"),
+        )?,
         "artifact-write" => engine.artifact_write(
             flags.require_str("session-id")?,
             flags.require_str("name")?,

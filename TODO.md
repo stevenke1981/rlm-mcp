@@ -117,7 +117,7 @@ Acceptance criteria:
   - `rlm_artifact_write`
 - [x] Keep default mode safe and deterministic.
 - [x] Add output byte limits for safe REPL transforms/artifacts (`RLM_MAX_TRANSFORM_BYTES`, `RLM_MAX_ARTIFACT_BYTES`).
-- [ ] Add command/time/memory limits for executable REPL sandboxes (P2 backends; policy in `docs/repl-execution-model.md`).
+- [x] Add command/time/memory limits for executable REPL sandboxes (P2 backends; policy in `docs/repl-execution-model.md`).
 
 Acceptance criteria:
 
@@ -345,15 +345,15 @@ Acceptance criteria:
 
 ## P2 - Optional REPL / sandbox backends
 
-- [ ] Design backend trait:
-  - safe Rust environment backend
-  - Python REPL backend
-  - command sandbox backend
-- [ ] Add capability flags per backend.
-- [ ] Add allowlist-based filesystem access.
-- [ ] Add timeout and memory limits.
-- [ ] Add audit logs for executed code.
-- [ ] Default to non-executable safe backend.
+- [x] Design backend trait:
+  - safe Rust environment backend (`src/rlm/repl/safe.rs`)
+  - Python REPL backend (reserved stub)
+  - command sandbox backend (`src/rlm/repl/command.rs`)
+- [x] Add capability flags per backend.
+- [x] Add allowlist-based filesystem access.
+- [x] Add timeout and memory limits.
+- [x] Add audit logs for executed code (`repl_exec` trajectory events).
+- [x] Default to non-executable safe backend.
 
 Acceptance criteria:
 

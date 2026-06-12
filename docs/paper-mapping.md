@@ -49,10 +49,10 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 | Slice line ranges | `rlm_slice` (`src/rlm/env.rs`) | **Done** | walkthrough §2 |
 | Search substrings | `rlm_peek` (`src/rlm/filter.rs`) | **Done** | `tests/rlm_e2e.rs` |
 | Transform snippets / derived artifacts | `rlm_transform`, `rlm_artifact_write`, `rlm_artifact_read` | **Done** | `src/rlm/transform.rs`, `src/rlm/artifacts.rs`, `docs/repl-execution-model.md` |
-| Python REPL with prompt as variable | — | **Differs** | Agent + MCP tools replace embedded REPL; P2 optional sandbox backends |
-| Safe default (no arbitrary code exec) | Built-in transform ops only; no sandbox by default | **Done** | transform unit tests |
+| Python REPL with prompt as variable | `rlm_repl_execute` (python stub) | **Differs** | Agent + MCP tools replace embedded REPL; command backend opt-in |
+| Safe default (no arbitrary code exec) | `safe_builtin` backend; `rlm_transform` only | **Done** | `tests/repl_sandbox.rs`, transform unit tests |
 | Output byte limits | `RLM_MAX_TRANSFORM_BYTES`, `RLM_MAX_ARTIFACT_BYTES` | **Done** | `docs/repl-execution-model.md` |
-| Executable REPL with time/memory limits | — | **Planned** | P2 sandbox backends; policy documented |
+| Executable REPL with time/memory limits | `rlm_repl_execute` + `src/rlm/repl/` | **Done** | `tests/repl_sandbox.rs`; `RLM_REPL_MAX_WALL_SECS` |
 
 **Acceptance:** Agents interact with context as an external object. Unsafe execution is not enabled by default.
 
@@ -168,7 +168,7 @@ Full limitations write-up: [`limitations.md`](limitations.md). Benchmark guide: 
 
 ---
 
-## 10. MCP / CLI surface (31 tools)
+## 10. MCP / CLI surface (33 tools)
 
 All paper-loop phases are exposed as MCP tools with CLI equivalents (`src/cli.rs`). Contract tests:
 
@@ -179,7 +179,7 @@ All paper-loop phases are exposed as MCP tools with CLI equivalents (`src/cli.rs
 | tools/list snapshot | `src/mcp/server.rs` (`write_tools_snapshot`) |
 | Schema docs | `docs/tools.md`, `rlm_tools_reference` |
 
-Snapshot: `packaging/mcp/tools-list.snapshot.json` (31 tools).
+Snapshot: `packaging/mcp/tools-list.snapshot.json` (33 tools).
 
 ---
 
@@ -199,7 +199,7 @@ Priority gaps that prevent calling the repo “paper-complete”:
 
 | Priority | Item |
 |----------|------|
-| P2 | Safe temp directory handling; executable REPL sandbox backends |
+| P2 | BrowseComp/OOLONG/CodeQA benchmark adapters (REPL sandboxes shipped) |
 | P1 | BrowseComp/OOLONG/CodeQA adapters (large S-NIAH fixtures shipped) |
 | P2 | OpenAI-compatible provider; GitHub release workflow; release artifact smoke |
 | P3 | — (limitations + benchmarks docs shipped) |

@@ -4,6 +4,7 @@ mod budget;
 mod config;
 mod env;
 mod filter;
+mod repl;
 mod transform;
 mod map;
 mod map_ledger;
@@ -152,7 +153,10 @@ impl RlmEngine {
         let started = Instant::now();
         let mut store = self.sessions.lock().unwrap();
         let session = store.get_or_hydrate(session_id)?;
-        let out = env::env_info(session);
+        let mut out = env::env_info(session);
+        if let Some(obj) = out.as_object_mut() {
+            obj.insert("repl".into(), repl::list_backends());
+        }
         self.record(
             session_id,
             "load",
@@ -237,12 +241,18 @@ impl RlmEngine {
         let started = Instant::now();
         let input = self.resolve_text_input(session_id, chunk_id, artifact_name, content)?;
         let input_len = input.len();
-        let out = transform::apply(&input, operation, params)?;
+        let out = repl::ReplBackend::execute_transform(
+            &repl::safe_backend(),
+            &input,
+            operation,
+            params,
+        )?;
         self.record(
             session_id,
             "transform",
             None,
             json!({
+                "backend": "safe_builtin",
                 "operation": operation,
                 "input_chars": input_len,
                 "output_chars": out.get("output_chars"),
@@ -257,6 +267,65 @@ impl RlmEngine {
 
     pub fn transform_operations(&self) -> Value {
         transform::supported_operations()
+    }
+
+    pub fn repl_info(&self) -> Value {
+        repl::list_backends()
+    }
+
+    pub fn repl_execute(
+        &self,
+        session_id: &str,
+        code: &str,
+        language: Option<&str>,
+        backend: Option<&str>,
+    ) -> Result<Value> {
+        let started = Instant::now();
+        let backend_id = backend
+            .and_then(repl::ReplBackendId::parse)
+            .unwrap_or(repl::ReplBackendId::Command);
+
+        if backend_id == repl::ReplBackendId::SafeBuiltin {
+            return Err(Error::InvalidArgument(
+                "repl_execute requires an executable backend (command or python)".into(),
+            ));
+        }
+
+        let exec_backend: Box<dyn repl::ReplBackend> = match backend_id {
+            repl::ReplBackendId::SafeBuiltin => Box::new(repl::SafeBuiltinBackend),
+            repl::ReplBackendId::Command => {
+                Box::new(repl::CommandSandboxBackend::new(repl::SandboxLimits::from_env()))
+            }
+            repl::ReplBackendId::Python => {
+                return Err(Error::InvalidArgument(
+                    "python REPL backend is not implemented; use backend=command".into(),
+                ));
+            }
+        };
+
+        let lang = language.unwrap_or("text");
+        let code_len = code.len();
+        let out = exec_backend.execute_code(session_id, code, lang)?;
+        let wall_ms = started.elapsed().as_millis() as u64;
+
+        self.record(
+            session_id,
+            "repl_exec",
+            None,
+            json!({
+                "backend": exec_backend.name(),
+                "language": lang,
+                "input_bytes": code_len,
+                "output_bytes": out.get("output_chars"),
+                "wall_ms": wall_ms,
+                "truncated": out.get("truncated"),
+                "audit": out.get("audit"),
+            }),
+            code_len,
+            trajectory::detail_size(&out),
+            started,
+        );
+        Ok(out)
     }
 
     pub fn artifact_write(

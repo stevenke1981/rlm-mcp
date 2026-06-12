@@ -8,8 +8,8 @@ This document records the P0 decision for how `rlm-mcp` implements the paper's R
 |------|--------|-------------|
 | **Safe built-in transforms** | **Default (shipped)** | `rlm_transform` applies deterministic string ops. No arbitrary code. |
 | **Derived artifacts** | **Default (shipped)** | `rlm_artifact_write` / `rlm_artifact_read` persist transform outputs under `RLM_CACHE_DIR/rlm-artifacts/<session_id>/`. |
-| **Embedded scripting sandbox** | Deferred P2 | Optional backend trait; not enabled by default. |
-| **External Python REPL** | Deferred P2 | Requires explicit env flag + documented limits. |
+| **Embedded scripting sandbox** | **P2 (shipped trait)** | `rlm_repl_info` / `rlm_repl_execute`; default remains safe. |
+| **External Python REPL** | Deferred P2 | Reserved backend id; use `command` backend for now. |
 
 **Rationale:** MCP agents already orchestrate tools. Typed, bounded transforms give REPL-like snippet manipulation without shipping a Python interpreter in the default binary.
 
@@ -37,9 +37,21 @@ Input resolution (first match wins):
 
 Oversized transform output is truncated with `truncated: true`. Oversized artifact writes are rejected.
 
-## Executable REPL limits (P2 policy)
+## REPL sandbox backends (P2)
 
-When optional sandboxes ship (P2), they must enforce:
+Implementation: `src/rlm/repl/` · MCP: `rlm_repl_info`, `rlm_repl_execute` · CLI: `repl-info`, `repl-exec`
+
+| Backend | Default | Executable | Notes |
+|---------|---------|------------|-------|
+| `safe_builtin` | **Yes** | No | Used by `rlm_transform` always |
+| `command` | Opt-in | Yes | `RLM_ALLOW_REPL_EXEC=1` + `RLM_REPL_COMMAND` |
+| `python` | Opt-in | Reserved | Returns not-implemented |
+
+`rlm_env_info` also embeds a `repl` section with active backend and limits.
+
+## Executable REPL limits (enforced)
+
+Opt-in sandboxes enforce:
 
 | Limit | Planned default |
 |-------|-----------------|

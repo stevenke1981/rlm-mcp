@@ -45,6 +45,14 @@ impl ToolHandler {
                 self.rlm.slice(session_id, chunk_id, start, end)
             }
             "rlm_transform" => self.rlm_transform(args),
+            "rlm_repl_info" => Ok(self.rlm.repl_info()),
+            "rlm_repl_execute" => {
+                let session_id = require_str(args, "session_id")?;
+                let code = require_str(args, "code")?;
+                let language = args.get("language").and_then(|v| v.as_str());
+                let backend = args.get("backend").and_then(|v| v.as_str());
+                self.rlm.repl_execute(session_id, code, language, backend)
+            }
             "rlm_artifact_write" => self.rlm_artifact_write(args),
             "rlm_artifact_read" => self.rlm_artifact_read(args),
             "rlm_chunk" => self.rlm_chunk(args),
@@ -502,6 +510,30 @@ pub fn tool_definitions() -> Vec<Value> {
                     "chunk_id": { "type": "string" },
                     "start_line": { "type": "integer" },
                     "end_line": { "type": "integer" }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_repl_info",
+            "List REPL sandbox backends, capability flags, and execution limits (default is safe non-executable).",
+            json!({ "type": "object", "properties": {} }),
+        ),
+        tool_def(
+            "rlm_repl_execute",
+            "Execute code via an opt-in REPL sandbox backend (requires RLM_ALLOW_REPL_EXEC=1).",
+            json!({
+                "type": "object",
+                "required": ["session_id", "code"],
+                "properties": {
+                    "session_id": { "type": "string" },
+                    "code": { "type": "string" },
+                    "language": { "type": "string", "default": "text" },
+                    "backend": {
+                        "type": "string",
+                        "default": "command",
+                        "enum": ["command", "python"],
+                        "description": "command uses RLM_REPL_COMMAND; python is reserved"
+                    }
                 }
             }),
         ),

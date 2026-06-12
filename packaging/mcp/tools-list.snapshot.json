@@ -1,6 +1,6 @@
 {
   "server": "rlm-mcp",
-  "tool_count": 31,
+  "tool_count": 33,
   "tools": [
     {
       "description": "Read a session artifact (optional line range).",
@@ -348,6 +348,46 @@
         "type": "object"
       },
       "name": "rlm_reduce_schema"
+    },
+    {
+      "description": "Execute code via an opt-in REPL sandbox backend (requires RLM_ALLOW_REPL_EXEC=1).",
+      "inputSchema": {
+        "properties": {
+          "backend": {
+            "default": "command",
+            "description": "command uses RLM_REPL_COMMAND; python is reserved",
+            "enum": [
+              "command",
+              "python"
+            ],
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "language": {
+            "default": "text",
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "code"
+        ],
+        "type": "object"
+      },
+      "name": "rlm_repl_execute"
+    },
+    {
+      "description": "List REPL sandbox backends, capability flags, and execution limits (default is safe non-executable).",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "rlm_repl_info"
     },
     {
       "description": "Load path or text content into an external RLM session. Returns session_id and metadata.",

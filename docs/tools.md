@@ -2,7 +2,7 @@
 
 Machine-readable source of truth: call `rlm_tools_reference` (MCP) or `rlm-mcp tools-reference --json` (CLI).
 
-Contract snapshot: [`packaging/mcp/tools-list.snapshot.json`](../packaging/mcp/tools-list.snapshot.json) (31 tools).
+Contract snapshot: [`packaging/mcp/tools-list.snapshot.json`](../packaging/mcp/tools-list.snapshot.json) (33 tools).
 
 ## Conventions
 
@@ -271,6 +271,21 @@ Optional filters: `session_id` (`--session-id`), `root_id` (`--root-id`).
 | `max_sub_calls` | `--max-sub-calls` |
 | `max_total_tokens_est` | `--max-tokens` |
 | `max_wall_secs` | `--max-wall-secs` |
+
+### `rlm_repl_info`
+
+Lists REPL sandbox backends, capability flags, and limits. CLI: `rlm-mcp repl-info --json`.
+
+### `rlm_repl_execute`
+
+Opt-in code execution (`RLM_ALLOW_REPL_EXEC=1`). CLI: `rlm-mcp repl-exec --session-id <id> --code "..." --backend command --json`.
+
+| MCP argument | CLI flag | Default |
+|--------------|----------|---------|
+| `session_id` | `--session-id` | required |
+| `code` | `--code` | required |
+| `language` | `--language` | `text` |
+| `backend` | `--backend` | `command` |
 
 ## Benchmark
 
