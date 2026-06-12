@@ -375,13 +375,13 @@ Acceptance criteria:
 
 ## P2 - Safety and privacy
 
-- [ ] Add secret redaction for trajectory exports.
-- [ ] Add binary-file detection.
+- [x] Add secret redaction for trajectory exports (default markers + `redact_patterns`).
+- [x] Add binary-file detection (`src/rlm/safety.rs` heuristic + scan skips).
 - [x] Add max output size for transform and artifact outputs.
-- [ ] Add max output size for chunk reads.
+- [x] Add max output size for chunk reads (`RLM_MAX_CHUNK_BYTES`).
 - [x] Add explicit opt-in for network/provider calls.
 - [ ] Add safe temp directory handling.
-- [ ] Add Windows path traversal tests.
+- [x] Add Windows path traversal tests (`tests/path_safety.rs`).
 
 Acceptance criteria:
 

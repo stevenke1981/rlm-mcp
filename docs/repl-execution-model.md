@@ -33,6 +33,7 @@ Input resolution (first match wins):
 |---------|---------|------------|
 | `RLM_MAX_TRANSFORM_BYTES` | 262144 (256 KiB) | `rlm_transform` output |
 | `RLM_MAX_ARTIFACT_BYTES` | same as transform max | `rlm_artifact_write` / read |
+| `RLM_MAX_CHUNK_BYTES` | 262144 (256 KiB) | `rlm_chunk` content field |
 
 Oversized transform output is truncated with `truncated: true`. Oversized artifact writes are rejected.
 

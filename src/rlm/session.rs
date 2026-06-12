@@ -4,7 +4,6 @@ use crate::discover::{
 use crate::error::{Error, Result};
 use crate::rlm::config::RlmConfig;
 use std::collections::HashMap;
-use std::path::Path;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -76,12 +75,7 @@ impl SessionStore {
     }
 
     pub fn create_from_path(&mut self, path: &str) -> Result<ScanSession> {
-        let root = Path::new(path)
-            .canonicalize()
-            .map_err(|e| Error::Other(e.to_string()))?;
-        if !root.exists() {
-            return Err(Error::InvalidArgument(format!("path not found: {path}")));
-        }
+        let root = super::safety::resolve_scan_path(path)?;
 
         let mut chunks = Vec::new();
         let mut total_bytes = 0usize;
@@ -143,9 +137,24 @@ impl SessionStore {
                 continue;
             }
 
-            let content = match std::fs::read_to_string(&file_path) {
-                Ok(c) if !c.contains('\0') => c,
-                _ => {
+            let bytes = match std::fs::read(&file_path) {
+                Ok(b) => b,
+                Err(_) => {
+                    *skip_reasons.entry("unreadable".into()).or_default() += 1;
+                    files_skipped += 1;
+                    continue;
+                }
+            };
+            if super::safety::is_probably_binary(&bytes) {
+                *skip_reasons
+                    .entry("binary_or_unreadable".into())
+                    .or_default() += 1;
+                files_skipped += 1;
+                continue;
+            }
+            let content = match String::from_utf8(bytes) {
+                Ok(c) => c,
+                Err(_) => {
                     *skip_reasons
                         .entry("binary_or_unreadable".into())
                         .or_default() += 1;
@@ -199,7 +208,7 @@ impl SessionStore {
         virtual_path: &str,
         variables: HashMap<String, String>,
     ) -> Result<ScanSession> {
-        if content.contains('\0') {
+        if super::safety::is_probably_binary(content.as_bytes()) {
             return Err(Error::InvalidArgument(
                 "binary content not supported".into(),
             ));

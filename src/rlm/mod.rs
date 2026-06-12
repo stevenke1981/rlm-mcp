@@ -10,6 +10,7 @@ mod map_ledger;
 mod persistence;
 mod provider;
 mod reduce;
+mod safety;
 mod session;
 mod task;
 mod trajectory;
@@ -351,15 +352,23 @@ impl RlmEngine {
             .collect();
 
         let page: Vec<_> = filtered.iter().skip(offset).take(limit).collect();
+        let max_chunk_bytes = safety::max_chunk_output_bytes();
+        let mut any_truncated = false;
         let chunks: Vec<Value> = page
             .iter()
             .map(|c| {
+                let (content, truncated) = safety::truncate_chunk_content(&c.content);
+                if truncated {
+                    any_truncated = true;
+                }
                 json!({
                     "id": c.id,
                     "path": c.path,
                     "offset": c.offset,
                     "line_count": c.line_count,
-                    "content": c.content
+                    "content": content,
+                    "truncated": truncated,
+                    "max_chunk_bytes": max_chunk_bytes
                 })
             })
             .collect();
@@ -370,7 +379,9 @@ impl RlmEngine {
             "limit": limit,
             "total": filtered.len(),
             "chunk_ids": page.iter().map(|c| &c.id).collect::<Vec<_>>(),
-            "chunks": chunks
+            "chunks": chunks,
+            "max_chunk_bytes": max_chunk_bytes,
+            "any_truncated": any_truncated
         });
         if !budget_eval.warnings.is_empty() {
             out["budget_warnings"] = json!(budget_eval.warnings);

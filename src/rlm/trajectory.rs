@@ -264,11 +264,7 @@ fn redact_string(s: &str, patterns: &[String]) -> String {
     if out.len() > 200 {
         out = format!("{}...[redacted {} bytes]", &out[..120], s.len());
     }
-    for pat in patterns {
-        if out.contains(pat) {
-            out = out.replace(pat, "[REDACTED]");
-        }
-    }
+    out = super::safety::redact_secrets(&out, patterns);
     out
 }
 
@@ -375,6 +371,26 @@ mod tests {
         assert_eq!(out["summary"]["by_type"]["scan"].as_u64().unwrap(), 1);
 
         std::env::remove_var("RLM_CACHE_DIR");
+    }
+
+    #[test]
+    fn redacts_default_secret_markers() {
+        let event = TrajectoryEvent {
+            seq: 1,
+            ts_unix: 0,
+            event_type: "task".into(),
+            session_id: "s".into(),
+            task_id: None,
+            detail: json!({"output": "Authorization: Bearer sk-testtoken password=secret"}),
+            bytes_in: 0,
+            bytes_out: 0,
+            elapsed_ms: 0,
+        };
+        let redacted = redact_event(&event, &[]);
+        let output = redacted["detail"]["output"].as_str().unwrap();
+        assert!(!output.contains("Bearer "));
+        assert!(!output.contains("sk-"));
+        assert!(!output.contains("password="));
     }
 
     #[test]

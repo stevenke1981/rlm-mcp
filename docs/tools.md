@@ -147,6 +147,8 @@ Paginated chunk reads for map workers.
 | `limit` | `--limit` | 5 |
 | `include_metadata` | `--metadata` | true |
 
+**Returns:** each chunk includes `content`, `truncated`, `max_chunk_bytes`. Response may set `any_truncated: true`. Limit via `RLM_MAX_CHUNK_BYTES` (default 256 KiB).
+
 ### `rlm_map_plan`
 
 Create parallel work batches from chunk IDs or file pattern.

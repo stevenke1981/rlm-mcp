@@ -199,7 +199,7 @@ Priority gaps that prevent calling the repo “paper-complete”:
 
 | Priority | Item |
 |----------|------|
-| P0 | Executable REPL sandbox backends (P2) |
+| P2 | Safe temp directory handling; executable REPL sandbox backends |
 | P1 | Large benchmark fixtures; provider dollar cost |
 | P2 | OpenAI-compatible provider; GitHub release workflow; release artifact smoke |
 | P3 | — (limitations + benchmarks docs shipped) |
