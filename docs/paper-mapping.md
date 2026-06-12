@@ -64,7 +64,7 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 | Narrow large corpus before full read | `rlm_peek` with `query`, `path`, `glob`, `regex`, line range, context radius, `limit` | **Done** | `src/rlm/filter.rs`, e2e peek |
 | Structured small previews | Match `preview`, `chunk_id`, counts in peek response | **Done** | benchmark uses model-visible peek bytes |
 | Result IDs for map phase | `chunk_id` / match IDs in peek output | **Done** | `rlm_map_plan` accepts peek-derived IDs |
-| BM25 / token retrieval | — | **Planned** | TODO P0; benchmark has `retrieval_peek` baseline (substring) |
+| BM25 / token retrieval | `rlm_peek` with `bm25: true` (`src/rlm/bm25.rs`) | **Done** | `src/rlm/filter.rs` tests; S-NIAH `retrieval_peek` baseline |
 | File/chunk summaries | Peek metadata + `rlm_env_info` file rollups | **Partial** | No separate LLM summary tool |
 
 **Acceptance:** 10M+ token sessions can be narrowed without reading every chunk.
@@ -198,7 +198,7 @@ Priority gaps that prevent calling the repo “paper-complete”:
 
 | Priority | Item |
 |----------|------|
-| P0 | BM25 peek; `rlm_map_claim` / `complete`; executable REPL decision |
+| P0 | `rlm_map_claim` / `complete`; executable REPL decision |
 | P1 | Large benchmark fixtures; provider dollar cost |
 | P2 | OpenAI-compatible provider; GitHub release workflow; release artifact smoke |
 | P3 | — (limitations + benchmarks docs shipped) |

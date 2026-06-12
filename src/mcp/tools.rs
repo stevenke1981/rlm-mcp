@@ -183,6 +183,7 @@ impl ToolHandler {
             path_filter: args.get("path_filter").and_then(|v| v.as_str()),
             glob: args.get("glob").and_then(|v| v.as_str()),
             regex: args.get("regex").and_then(|v| v.as_bool()).unwrap_or(false),
+            bm25: args.get("bm25").and_then(|v| v.as_bool()).unwrap_or(false),
             case_sensitive: args
                 .get("case_sensitive")
                 .and_then(|v| v.as_bool())
@@ -205,6 +206,16 @@ impl ToolHandler {
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false),
         };
+        if opts.bm25 && opts.query.is_none() {
+            return Err(Error::InvalidArgument(
+                "bm25 search requires query".into(),
+            ));
+        }
+        if opts.bm25 && opts.regex {
+            return Err(Error::InvalidArgument(
+                "bm25 and regex are mutually exclusive".into(),
+            ));
+        }
         if opts.query.is_none() && opts.path_filter.is_none() && opts.glob.is_none() {
             return Err(Error::InvalidArgument(
                 "provide query, path_filter, or glob".into(),
@@ -395,7 +406,7 @@ pub fn tool_definitions() -> Vec<Value> {
         ),
         tool_def(
             "rlm_peek",
-            "Filter/search within a session (path, glob, regex, line range) without full load.",
+            "Filter/search within a session (substring, BM25, glob, regex, line range) without full load.",
             json!({
                 "type": "object",
                 "required": ["session_id"],
@@ -405,6 +416,7 @@ pub fn tool_definitions() -> Vec<Value> {
                     "path_filter": { "type": "string" },
                     "glob": { "type": "string" },
                     "regex": { "type": "boolean", "default": false },
+                    "bm25": { "type": "boolean", "default": false },
                     "case_sensitive": { "type": "boolean", "default": true },
                     "line_start": { "type": "integer" },
                     "line_end": { "type": "integer" },

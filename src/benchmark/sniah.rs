@@ -206,6 +206,8 @@ fn run_retrieval_peek(
         &session_id,
         PeekOptions {
             query: Some(&fixture.needle_key),
+            bm25: true,
+            case_sensitive: false,
             include_content: false,
             limit: 5,
             ..Default::default()
@@ -218,7 +220,7 @@ fn run_retrieval_peek(
         answer,
         evidence,
         Some(session_id),
-        Some("BM25-style retrieval approximated via rlm_peek substring filter".into()),
+        Some("BM25 retrieval via rlm_peek --bm25".into()),
     ))
 }
 

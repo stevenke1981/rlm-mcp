@@ -71,7 +71,7 @@ See also: [`examples/bad-prompt-stuffing.md`](../examples/bad-prompt-stuffing.md
 
 **In rlm-mcp:**
 
-- `rlm_peek` is **substring / regex / glob** retrieval, not semantic embedding search (BM25 is **planned**, not implemented).
+- `rlm_peek` supports **substring / regex / glob / BM25** token ranking; it is not semantic embedding search.
 - `rlm_reduce_merge` merges structured JSON; it does not infer meaning from unstructured worker prose.
 - Repository understanding without symbol graphs relies on text search — pair with **`cbm-mcp`** for call-path / symbol tasks (separate MCP, no code coupling).
 

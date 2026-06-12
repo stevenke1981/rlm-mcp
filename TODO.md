@@ -132,7 +132,7 @@ Acceptance criteria:
   - file-level summary
   - chunk-level metadata
   - match counts
-- [ ] Add BM25 or token search option for document corpora.
+- [x] Add BM25 or token search option for document corpora.
 - [x] Add result IDs that can be fed into map tools.
 
 Acceptance criteria:

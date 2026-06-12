@@ -83,13 +83,14 @@ Search and filter without loading full context into the model.
 | `path_filter` | `--path` | |
 | `glob` | `--glob` | e.g. `*.log` |
 | `regex` | `--regex` | false |
+| `bm25` | `--bm25` | false (token BM25 ranking; requires `query`) |
 | `case_sensitive` | `--ignore-case` (inverted) | true |
 | `line_start` / `line_end` | `--line-start` / `--line-end` | |
 | `context_radius` | `--context` | 2 |
 | `limit` | `--limit` | 20 |
 | `include_content` | `--full` | false |
 
-**Returns:** `matches[]` with `chunk_id`, `line`, `preview`; feed `chunk_id` into map tools.
+**Returns:** `matches[]` with `chunk_id`, `line`, `preview` (and `bm25_score` when `bm25=true`); `search_mode` is `substring`, `regex`, or `bm25`.
 
 ### `rlm_slice`
 

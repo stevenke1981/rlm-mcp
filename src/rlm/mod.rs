@@ -1,3 +1,4 @@
+mod bm25;
 mod budget;
 mod config;
 mod env;

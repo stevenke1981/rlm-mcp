@@ -46,6 +46,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
                     path_filter: flags.get_str("path"),
                     glob: flags.get_str("glob"),
                     regex: flags.get_bool("regex"),
+                    bm25: flags.get_bool("bm25"),
                     case_sensitive: !flags.get_bool("ignore-case"),
                     line_start: flags.get_usize("line-start"),
                     line_end: flags.get_usize("line-end"),

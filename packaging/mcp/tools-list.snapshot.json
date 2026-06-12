@@ -171,9 +171,13 @@
       "name": "rlm_map_plan"
     },
     {
-      "description": "Filter/search within a session (path, glob, regex, line range) without full load.",
+      "description": "Filter/search within a session (substring, BM25, glob, regex, line range) without full load.",
       "inputSchema": {
         "properties": {
+          "bm25": {
+            "default": false,
+            "type": "boolean"
+          },
           "case_sensitive": {
             "default": true,
             "type": "boolean"
