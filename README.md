@@ -80,6 +80,7 @@ Replace `command` with the absolute path from `install.ps1` / `install.sh`, or u
 | Map | `rlm_chunk`, `rlm_map_plan` | Paginated chunk reads; parallel work batches |
 | Reduce | `rlm_reduce_schema`, `rlm_reduce_merge` | Merge worker JSON; decide if recursion needed |
 | Recurse | `rlm_task_create`, `rlm_task_list`, `rlm_task_result`, `rlm_task_reduce` | Sub-tasks with mock/dry-run provider |
+| Observe | `rlm_trajectory_get`, `rlm_trajectory_final` | Run trajectory JSON/JSONL/replay + cost summary |
 | Help | `rlm_workflow` | Phase guidance |
 
 Also: `rlm_session_list`, `rlm_session_delete`
@@ -128,4 +129,4 @@ External files / logs / docs / text blobs
 
 See [`TODO.md`](TODO.md) for the full paper-complete implementation backlog.
 
-**Current status:** P0 complete; P1 recursive sub-call runtime with mock/dry-run providers, budget controls, and task persistence.
+**Current status:** P0 complete; P1 recursive sub-call + trajectory logging (JSONL/replay/redaction) with per-run cost summary.

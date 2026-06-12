@@ -67,6 +67,7 @@ pub fn workflow_guidance(phase: &str) -> Value {
                 "rlm_workflow", "rlm_scan", "rlm_env_info", "rlm_peek", "rlm_slice",
                 "rlm_chunk", "rlm_map_plan", "rlm_reduce_schema", "rlm_reduce_merge",
                 "rlm_task_create", "rlm_task_list", "rlm_task_result", "rlm_task_reduce",
+                "rlm_trajectory_get", "rlm_trajectory_final",
                 "rlm_session_list", "rlm_session_delete"
             ],
             "principle": "Context is external. LLM orchestrates via MCP tools — no bulk context loading."

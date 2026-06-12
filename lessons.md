@@ -11,3 +11,9 @@
 **Trigger:** PowerShell compound commands with `$var =` fail when shell wrapper prepends `(cd && ...)`.
 **Rule:** For Windows CLI smoke tests, use single-invocation commands without inline variable assignment, or run via `cargo test` instead.
 **Source:** CLI verification
+
+---
+## Lesson #3 — 2026-06-12
+**Trigger:** `PeekOptions` moved into `peek_session`, then `opts.query` used after move in trajectory recorder.
+**Rule:** Capture trajectory byte counts from inputs before calling functions that take ownership of option structs.
+**Source:** P1 trajectory logging

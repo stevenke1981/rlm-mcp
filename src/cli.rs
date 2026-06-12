@@ -9,7 +9,8 @@ pub fn run_cli(args: &[String]) -> Result<()> {
         return Err(Error::InvalidArgument(
             "usage: codebase-memory-rlm-mcp <command> [options]\n\
              commands: scan, peek, chunk, env-info, slice, map-plan, reduce-schema, reduce-merge, \
-             session-list, session-delete, task-create, task-list, task-result, task-reduce, workflow"
+             session-list, session-delete, task-create, task-list, task-result, task-reduce, \
+             trajectory-get, trajectory-final, workflow"
                 .into(),
         ));
     }
@@ -80,7 +81,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
                 .map(serde_json::from_str::<Vec<Value>>)
                 .transpose()?
                 .unwrap_or_default();
-            engine.reduce_merge(&workers)
+            engine.reduce_merge(&workers)?
         }
         "session-list" => engine.session_list(),
         "session-delete" => engine.session_delete(flags.require_str("session-id")?)?,
@@ -96,6 +97,17 @@ pub fn run_cli(args: &[String]) -> Result<()> {
         "task-list" => engine.task_list(flags.get_str("session-id"), flags.get_str("root-id")),
         "task-result" => engine.task_result(flags.require_str("task-id")?)?,
         "task-reduce" => engine.task_reduce(flags.require_str("root-id")?)?,
+        "trajectory-get" => engine.trajectory_get(
+            flags.require_str("session-id")?,
+            flags.get_str("format").unwrap_or("json"),
+            !flags.get_bool("no-redact"),
+            &flags.get_str_list("redact-pattern").unwrap_or_default(),
+        )?,
+        "trajectory-final" => engine.trajectory_record_final(
+            flags.require_str("session-id")?,
+            flags.require_str("answer")?,
+            flags.get_usize("evidence-count").unwrap_or(0),
+        ),
         "workflow" => engine.workflow(flags.get_str("phase").unwrap_or("overview")),
         _ => {
             return Err(Error::InvalidArgument(format!(

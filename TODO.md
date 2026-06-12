@@ -217,7 +217,7 @@ Acceptance criteria:
 
 ## P1 - RLM trajectory logging
 
-- [ ] Persist trajectory events:
+- [x] Persist trajectory events:
   - scan/load
   - peek/filter
   - chunk/map
@@ -226,10 +226,10 @@ Acceptance criteria:
   - final answer
   - budget event
   - error/cancel
-- [ ] Add `rlm_trajectory_get`.
-- [ ] Add JSONL export for analysis.
-- [ ] Add replay mode for deterministic debugging.
-- [ ] Add redaction controls for sensitive text.
+- [x] Add `rlm_trajectory_get`.
+- [x] Add JSONL export for analysis.
+- [x] Add replay mode for deterministic debugging.
+- [x] Add redaction controls for sensitive text.
 
 Acceptance criteria:
 
@@ -238,13 +238,14 @@ Acceptance criteria:
 
 ## P1 - Cost, budget, and runtime accounting
 
-- [ ] Track:
+- [x] Track:
   - input bytes/tokens estimated
   - output bytes/tokens estimated
   - chunks read
   - sub-call count
   - recursion depth
   - elapsed time
+- [ ] Track:
   - provider cost if configured
 - [ ] Add budget configuration:
   - per session
@@ -435,7 +436,7 @@ Acceptance criteria:
 - [x] scan/peek/chunk end-to-end fixture
 - [ ] multi-worker map fixture
 - [x] recursive sub-task fixture with mock provider
-- [ ] trajectory export/replay fixture
+- [x] trajectory export/replay fixture
 - [ ] benchmark mini-suite
 - [ ] install/release artifact smoke
 

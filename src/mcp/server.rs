@@ -142,6 +142,7 @@ mod tests {
         assert!(resp.contains("rlm_map_plan"));
         assert!(resp.contains("rlm_reduce_merge"));
         assert!(resp.contains("rlm_task_create"));
+        assert!(resp.contains("rlm_trajectory_get"));
         assert!(!resp.contains("rlm_filter"));
         assert!(!resp.contains("index_repository"));
     }

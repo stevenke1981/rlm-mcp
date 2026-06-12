@@ -66,15 +66,17 @@ fn scan_peek_chunk_map_reduce_loop() {
             .unwrap();
         assert_eq!(chunk["chunks"].as_array().unwrap().len(), 1);
 
-        let merged = engine.reduce_merge(&[json!({
-            "batch_id": "batch-0",
-            "findings": [{
-                "summary": "two ERROR lines in app.log",
-                "chunk_ids": [chunk_id],
-                "paths": ["app.log"]
-            }],
-            "unresolved": []
-        })]);
+        let merged = engine
+            .reduce_merge(&[json!({
+                "batch_id": "batch-0",
+                "findings": [{
+                    "summary": "two ERROR lines in app.log",
+                    "chunk_ids": [chunk_id],
+                    "paths": ["app.log"]
+                }],
+                "unresolved": []
+            })])
+            .unwrap();
         assert_eq!(merged["finding_count"].as_u64().unwrap(), 1);
         assert!(!merged["needs_recursion"].as_bool().unwrap());
     });
@@ -190,5 +192,75 @@ fn recursive_subtask_with_mock_provider() {
         assert_eq!(reduced["task_count"].as_u64().unwrap(), 2);
         assert_eq!(reduced["completed_count"].as_u64().unwrap(), 2);
         assert!(reduced["total_input_tokens_est"].as_u64().unwrap() > 0);
+    });
+}
+
+#[test]
+fn trajectory_records_full_loop() {
+    with_cache(|engine| {
+        let scan = engine
+            .scan(
+                None,
+                Some("ERROR alpha\nINFO beta\nERROR gamma\n"),
+                Some("app.log"),
+                None,
+            )
+            .unwrap();
+        let session_id = scan["session_id"].as_str().unwrap();
+
+        engine
+            .peek(
+                session_id,
+                PeekOptions {
+                    query: Some("ERROR"),
+                    limit: 5,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        let env = engine.env_info(session_id).unwrap();
+        let chunk_id = env["files"][0]["chunk_ids"][0]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        engine
+            .chunk(
+                session_id,
+                None,
+                Some(std::slice::from_ref(&chunk_id)),
+                0,
+                1,
+                true,
+            )
+            .unwrap();
+
+        engine
+            .task_create(
+                session_id,
+                "count errors",
+                std::slice::from_ref(&chunk_id),
+                None,
+                "mock",
+                None,
+                true,
+            )
+            .unwrap();
+
+        engine.trajectory_record_final(session_id, "two ERROR lines found", 2);
+
+        let traj = engine
+            .trajectory_get(session_id, "replay", true, &[])
+            .unwrap();
+        let summary = &traj["summary"];
+        assert!(summary["event_count"].as_u64().unwrap() >= 5);
+        assert!(summary["sub_call_count"].as_u64().unwrap() >= 1);
+        assert!(summary["by_type"]["final_answer"].as_u64().unwrap() >= 1);
+
+        let jsonl = engine
+            .trajectory_get(session_id, "jsonl", true, &[])
+            .unwrap();
+        assert!(jsonl["jsonl"].as_str().unwrap().contains("scan"));
     });
 }

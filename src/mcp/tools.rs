@@ -67,6 +67,36 @@ impl ToolHandler {
                 let root_id = require_str(args, "root_id")?;
                 self.rlm.task_reduce(root_id)
             }
+            "rlm_trajectory_get" => {
+                let session_id = require_str(args, "session_id")?;
+                let format = args
+                    .get("format")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("json");
+                let redact = args.get("redact").and_then(|v| v.as_bool()).unwrap_or(true);
+                let patterns = args
+                    .get("redact_patterns")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                self.rlm
+                    .trajectory_get(session_id, format, redact, &patterns)
+            }
+            "rlm_trajectory_final" => {
+                let session_id = require_str(args, "session_id")?;
+                let answer = require_str(args, "answer")?;
+                let evidence_count = args
+                    .get("evidence_count")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as usize;
+                Ok(self
+                    .rlm
+                    .trajectory_record_final(session_id, answer, evidence_count))
+            }
             _ => Err(Error::InvalidArgument(format!("unknown tool: {name}"))),
         }
     }
@@ -159,7 +189,7 @@ impl ToolHandler {
             .and_then(|v| v.as_array())
             .cloned()
             .unwrap_or_default();
-        Ok(self.rlm.reduce_merge(&workers))
+        self.rlm.reduce_merge(&workers)
     }
 
     fn rlm_task_create(&self, args: &Value) -> Result<Value> {
@@ -401,6 +431,33 @@ pub fn tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "required": ["root_id"],
                 "properties": { "root_id": { "type": "string" } }
+            }),
+        ),
+        tool_def(
+            "rlm_trajectory_get",
+            "Get persisted RLM run trajectory with cost summary (json, jsonl, or replay format).",
+            json!({
+                "type": "object",
+                "required": ["session_id"],
+                "properties": {
+                    "session_id": { "type": "string" },
+                    "format": { "type": "string", "enum": ["json", "jsonl", "replay"], "default": "json" },
+                    "redact": { "type": "boolean", "default": true },
+                    "redact_patterns": { "type": "array", "items": { "type": "string" } }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_trajectory_final",
+            "Record final answer event in trajectory log.",
+            json!({
+                "type": "object",
+                "required": ["session_id", "answer"],
+                "properties": {
+                    "session_id": { "type": "string" },
+                    "answer": { "type": "string" },
+                    "evidence_count": { "type": "integer", "default": 0 }
+                }
             }),
         ),
     ]
