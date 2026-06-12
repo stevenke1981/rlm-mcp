@@ -79,7 +79,8 @@
             "default": "sniah",
             "enum": [
               "sniah",
-              "oolong"
+              "oolong",
+              "codeqa"
             ],
             "type": "string"
           }

@@ -17,9 +17,26 @@ rlm-mcp benchmark-list --json
 |-------|--------|------------|---------------|
 | `sniah` | **Runnable** | `mini` | `mini`, `small`, `large`, `nightly` |
 | `oolong` | **Runnable** | `mini` | `mini`, `small` |
+| `codeqa` | **Runnable** | `mini` | `mini`, `small` |
 | `browsecomp_plus` | Planned | — | — |
 | `oolong_pairs` | Planned | — | — |
-| `codeqa` | Planned | — | — |
+
+---
+
+## CodeQA-style (repository symbol lookup)
+
+**Task:** A synthetic mini-repo is scanned from disk. Baselines must find the `pub fn <symbol>` name in `src/pipeline.rs`.
+
+**Fixture generation** (`src/benchmark/codeqa.rs`):
+
+| Size | Files | Typical use |
+|------|-------|-------------|
+| `mini` | 5 | CI, fast local check |
+| `small` | 12 | Local regression |
+
+```powershell
+rlm-mcp benchmark-run --suite codeqa --fixture-size mini --json
+```
 
 ---
 

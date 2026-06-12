@@ -138,7 +138,7 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 | **OOLONG-like** | `src/benchmark/oolong.rs`, suite `oolong` | **Done** | `tests/benchmark_oolong.rs`, CI `mini` |
 | BrowseComp-Plus-like | Listed in `rlm_benchmark_list` → `planned` | **Planned** | — |
 | OOLONG-Pairs | `planned` in `list_suites()` | **Planned** | — |
-| CodeQA-style repo QA | `planned` | **Planned** | Examples outline in `rlm-loop.md` (no harness yet) |
+| **CodeQA-style** | `src/benchmark/codeqa.rs`, suite `codeqa` | **Done** | `tests/benchmark_codeqa.rs`, CI `mini` |
 
 | Paper baseline | `BaselineKind` in `src/benchmark/types.rs` | Status |
 |----------------|--------------------------------------------|--------|

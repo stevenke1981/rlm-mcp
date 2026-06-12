@@ -93,7 +93,7 @@ These are **design choices**, not bugs:
 
 1. **No default Python REPL** — MCP tools replace `prompt` as a Python variable; executable sandboxes are P2.
 2. **No graph index** — code structure questions should use `cbm-mcp`, not `rlm_peek` alone.
-3. **Benchmark scope** — CI runs S-NIAH only; BrowseComp-Plus, OOLONG, OOLONG-Pairs, CodeQA adapters are listed as `planned` in `rlm_benchmark_list`.
+3. **Benchmark scope** — CI runs S-NIAH, OOLONG, and CodeQA `mini` suites; BrowseComp-Plus and OOLONG-Pairs remain `planned` in `rlm_benchmark_list`.
 4. **Retrieval baseline ≠ BM25** — `retrieval_peek` uses `rlm_peek` substring filter; CodeAct + BM25 from the paper is not replicated yet.
 
 ---

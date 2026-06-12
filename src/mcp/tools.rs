@@ -837,7 +837,7 @@ pub fn tool_definitions() -> Vec<Value> {
                     "suite": {
                         "type": "string",
                         "default": "sniah",
-                        "enum": ["sniah", "oolong"]
+                        "enum": ["sniah", "oolong", "codeqa"]
                     },
                     "fixture_size": {
                         "type": "string",

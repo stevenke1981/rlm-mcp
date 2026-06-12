@@ -1,7 +1,11 @@
+mod codeqa;
 mod oolong;
 mod sniah;
 mod types;
 
+pub use codeqa::{
+    extract_symbol, generate_fixture as generate_codeqa_fixture, run as run_codeqa, CodeqaSize,
+};
 pub use oolong::{
     generate_fixture as generate_oolong_fixture, run as run_oolong, sum_metrics, OolongSize,
 };
@@ -60,12 +64,33 @@ pub fn list_suites() -> Value {
                     "sub_call_count"
                 ],
                 "offline": true
+            },
+            {
+                "id": "codeqa",
+                "name": "CodeQA-style repository symbol lookup",
+                "description": "Synthetic mini-repo on disk; baselines must find a pub fn symbol in src/pipeline.rs.",
+                "fixture_sizes": ["mini", "small"],
+                "ci_fixture_sizes": ["mini"],
+                "ci_default": "mini",
+                "baselines": BaselineKind::all()
+                    .iter()
+                    .map(|b| b.as_str())
+                    .collect::<Vec<_>>(),
+                "metrics": [
+                    "accuracy",
+                    "bytes_in",
+                    "bytes_out",
+                    "tokens_est",
+                    "runtime_ms",
+                    "trajectory_events",
+                    "sub_call_count"
+                ],
+                "offline": true
             }
         ],
         "planned": [
             "browsecomp_plus",
-            "oolong_pairs",
-            "codeqa"
+            "oolong_pairs"
         ]
     })
 }
@@ -84,6 +109,13 @@ pub fn run_suite(engine: &RlmEngine, suite: &str, fixture_size: Option<&str>) ->
                 .and_then(OolongSize::parse_size)
                 .unwrap_or(OolongSize::Mini);
             let report = run_oolong(engine, size)?;
+            Ok(report.to_value())
+        }
+        "codeqa" => {
+            let size = fixture_size
+                .and_then(CodeqaSize::parse_size)
+                .unwrap_or(CodeqaSize::Mini);
+            let report = run_codeqa(engine, size)?;
             Ok(report.to_value())
         }
         other => Err(Error::InvalidArgument(format!(
