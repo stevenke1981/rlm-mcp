@@ -325,12 +325,12 @@ Acceptance criteria:
 
 ## P1 - Session storage and concurrency
 
-- [ ] Make session files atomic and Windows-safe.
-- [ ] Add per-session lock or optimistic concurrency.
-- [ ] Support multiple simultaneous agents reading the same session.
-- [ ] Support session deletion while reads are active safely.
-- [ ] Add cleanup command for expired sessions.
-- [ ] Add session import/export.
+- [x] Make session files atomic and Windows-safe.
+- [x] Add per-session lock or optimistic concurrency.
+- [x] Support multiple simultaneous agents reading the same session.
+- [x] Support session deletion while reads are active safely.
+- [x] Add cleanup command for expired sessions.
+- [x] Add session import/export.
 
 Acceptance criteria:
 
@@ -430,15 +430,15 @@ Acceptance criteria:
 - [x] `cargo fmt --check`
 - [x] `cargo test --all-targets`
 - [x] `cargo clippy --all-targets -- -D warnings`
-- [ ] `cargo build --release`
+- [x] `cargo build --release`
 - [x] MCP initialize/tools/list smoke
 - [x] CLI JSON contract tests
 - [x] scan/peek/chunk end-to-end fixture
-- [ ] multi-worker map fixture
+- [x] multi-worker map fixture
 - [x] recursive sub-task fixture with mock provider
 - [x] trajectory export/replay fixture
 - [x] benchmark mini-suite
-- [ ] install/release artifact smoke
+- [x] install/release artifact smoke
 
 ## Non-goals
 

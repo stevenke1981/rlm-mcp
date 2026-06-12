@@ -34,6 +34,8 @@ pub struct ScanSession {
     pub created_at_unix: u64,
     #[serde(default)]
     pub expires_at_unix: u64,
+    #[serde(default)]
+    pub revision: u64,
 }
 
 fn default_source_kind() -> String {
@@ -255,6 +257,7 @@ impl SessionStore {
             variables,
             created_at_unix: now,
             expires_at_unix: now.saturating_add(self.config.session_ttl_secs),
+            revision: 1,
         };
         assign_chunk_ids(&mut session);
         self.sessions.insert(session.id.clone(), session.clone());
@@ -264,13 +267,32 @@ impl SessionStore {
     }
 
     pub fn get(&self, id: &str) -> Result<&ScanSession> {
+        if super::persistence::is_session_deleted(id) {
+            return Err(Error::SessionNotFound(id.to_string()));
+        }
         self.sessions
             .get(id)
             .ok_or_else(|| Error::SessionNotFound(id.to_string()))
     }
 
-    pub fn get_chunk(&self, session_id: &str, chunk_id: &str) -> Result<&Chunk> {
-        let session = self.get(session_id)?;
+    pub fn hydrate(&mut self, id: &str) -> Result<()> {
+        if self.sessions.contains_key(id) {
+            return Ok(());
+        }
+        if let Some(session) = super::persistence::load_session_by_id(id)? {
+            self.sessions.insert(id.to_string(), session);
+            return Ok(());
+        }
+        Err(Error::SessionNotFound(id.to_string()))
+    }
+
+    pub fn get_or_hydrate(&mut self, id: &str) -> Result<&ScanSession> {
+        let _ = self.hydrate(id);
+        self.get(id)
+    }
+
+    pub fn get_chunk(&mut self, session_id: &str, chunk_id: &str) -> Result<&Chunk> {
+        let session = self.get_or_hydrate(session_id)?;
         session
             .chunks
             .iter()
@@ -279,31 +301,98 @@ impl SessionStore {
     }
 
     pub fn list(&self) -> Vec<serde_json::Value> {
-        self.sessions
-            .values()
-            .map(|s| {
-                serde_json::json!({
-                    "id": s.id,
-                    "root_path": s.root_path,
-                    "source_kind": s.source_kind,
-                    "chunk_count": s.chunks.len(),
-                    "total_bytes": s.total_bytes,
-                    "files_scanned": s.files_scanned,
-                    "files_skipped": s.files_skipped,
-                    "created_at_unix": s.created_at_unix,
-                    "expires_at_unix": s.expires_at_unix,
-                })
-            })
-            .collect()
+        let mut merged: std::collections::HashMap<String, ScanSession> =
+            std::collections::HashMap::new();
+        for session in self.sessions.values() {
+            merged.insert(session.id.clone(), session.clone());
+        }
+        if let Ok(ids) = super::persistence::list_disk_session_ids() {
+            for id in ids {
+                if merged.contains_key(&id) {
+                    continue;
+                }
+                if let Ok(Some(session)) = super::persistence::load_session_by_id(&id) {
+                    merged.insert(id, session);
+                }
+            }
+        }
+        let mut out: Vec<_> = merged.values().map(session_summary).collect();
+        out.sort_by(|a, b| {
+            a["id"]
+                .as_str()
+                .unwrap_or("")
+                .cmp(b["id"].as_str().unwrap_or(""))
+        });
+        out
     }
 
     pub fn delete(&mut self, id: &str) -> Result<()> {
-        if self.sessions.remove(id).is_none() {
+        let existed = self.sessions.remove(id).is_some()
+            || super::persistence::session_file_path(id).exists();
+        if !existed {
             return Err(Error::SessionNotFound(id.to_string()));
         }
         super::persistence::remove_session_file(id)?;
         Ok(())
     }
+
+    pub fn cleanup_expired(&mut self) -> Result<super::persistence::CleanupReport> {
+        let _ = self.purge_expired();
+        let report = super::persistence::cleanup_expired_on_disk(
+            self.config.session_ttl_secs,
+            self.config.max_sessions,
+        )?;
+        for id in &report.removed_ids {
+            self.sessions.remove(id);
+        }
+        Ok(report)
+    }
+
+    pub fn export(&mut self, id: &str) -> Result<ScanSession> {
+        self.get_or_hydrate(id)?;
+        Ok(self.sessions.get(id).unwrap().clone())
+    }
+
+    pub fn import_session(&mut self, mut session: ScanSession, preserve_id: bool) -> Result<ScanSession> {
+        if !preserve_id || session.id.is_empty() {
+            session.id = Uuid::new_v4().to_string();
+        }
+        if super::persistence::is_session_deleted(&session.id) {
+            return Err(Error::InvalidArgument(format!(
+                "cannot import deleted session id: {}",
+                session.id
+            )));
+        }
+        session.revision = session.revision.max(1);
+        assign_chunk_ids(&mut session);
+        if session.expires_at_unix == 0 {
+            session.expires_at_unix = super::persistence::unix_now()
+                .saturating_add(self.config.session_ttl_secs);
+        }
+        self.sessions.insert(session.id.clone(), session.clone());
+        super::persistence::persist_session(&session)?;
+        let _ = self.purge_expired();
+        Ok(session)
+    }
+}
+
+fn session_summary(s: &ScanSession) -> serde_json::Value {
+    serde_json::json!({
+        "id": s.id,
+        "root_path": s.root_path,
+        "source_kind": s.source_kind,
+        "chunk_count": s.chunks.len(),
+        "total_bytes": s.total_bytes,
+        "files_scanned": s.files_scanned,
+        "files_skipped": s.files_skipped,
+        "created_at_unix": s.created_at_unix,
+        "expires_at_unix": s.expires_at_unix,
+        "revision": s.revision,
+    })
+}
+
+pub(crate) fn normalize_session_public(session: &mut ScanSession) {
+    normalize_session(session);
 }
 
 impl Default for SessionStore {

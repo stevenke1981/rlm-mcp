@@ -9,7 +9,8 @@ pub fn run_cli(args: &[String]) -> Result<()> {
         return Err(Error::InvalidArgument(
             "usage: rlm-mcp <command> [options]\n\
              commands: scan, peek, chunk, env-info, slice, map-plan, reduce-schema, reduce-merge, \
-             session-list, session-delete, task-create, task-list, task-result, task-reduce, \
+             session-list, session-delete, session-cleanup, session-export, session-import, \
+             task-create, task-list, task-result, task-reduce, \
              trajectory-get, trajectory-final, budget-configure, budget-status, task-cancel, \
              benchmark, tools-reference, workflow"
                 .into(),
@@ -86,6 +87,22 @@ pub fn run_cli(args: &[String]) -> Result<()> {
         }
         "session-list" => engine.session_list(),
         "session-delete" => engine.session_delete(flags.require_str("session-id")?)?,
+        "session-cleanup" => engine.session_cleanup()?,
+        "session-export" => engine.session_export(flags.require_str("session-id")?)?,
+        "session-import" => {
+            let json_str = flags
+                .get_str("session-json")
+                .map(|s| s.to_string())
+                .or_else(|| read_stdin_content(&flags).ok())
+                .ok_or_else(|| Error::InvalidArgument("provide --session-json or --stdin".into()))?;
+            let parsed: serde_json::Value = serde_json::from_str(&json_str)?;
+            let session: crate::rlm::ScanSession = if let Some(inner) = parsed.get("session") {
+                serde_json::from_value(inner.clone())?
+            } else {
+                serde_json::from_value(parsed)?
+            };
+            engine.session_import(session, flags.get_bool("preserve-id"))?
+        }
         "task-create" => engine.task_create(
             flags.require_str("session-id")?,
             flags.require_str("prompt")?,

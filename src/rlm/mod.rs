@@ -144,8 +144,8 @@ impl RlmEngine {
 
     pub fn env_info(&self, session_id: &str) -> Result<Value> {
         let started = Instant::now();
-        let store = self.sessions.lock().unwrap();
-        let session = store.get(session_id)?;
+        let mut store = self.sessions.lock().unwrap();
+        let session = store.get_or_hydrate(session_id)?;
         let out = env::env_info(session);
         self.record(
             session_id,
@@ -171,7 +171,7 @@ impl RlmEngine {
         end_line: usize,
     ) -> Result<Value> {
         let started = Instant::now();
-        let store = self.sessions.lock().unwrap();
+        let mut store = self.sessions.lock().unwrap();
         let chunk = store.get_chunk(session_id, chunk_id)?.clone();
         let out = env::slice_chunk(&chunk, start_line, end_line);
         self.record(
@@ -202,8 +202,8 @@ impl RlmEngine {
     ) -> Result<Value> {
         let started = Instant::now();
         let budget_eval = self.ensure_session_budget(session_id, limit as u64, 0, 0)?;
-        let store = self.sessions.lock().unwrap();
-        let session = store.get(session_id)?;
+        let mut store = self.sessions.lock().unwrap();
+        let session = store.get_or_hydrate(session_id)?;
         let filtered: Vec<_> = session
             .chunks
             .iter()
@@ -264,8 +264,8 @@ impl RlmEngine {
     pub fn peek(&self, session_id: &str, opts: PeekOptions<'_>) -> Result<Value> {
         let started = Instant::now();
         let query_len = opts.query.map(|q| q.len()).unwrap_or(0);
-        let store = self.sessions.lock().unwrap();
-        let session = store.get(session_id)?;
+        let mut store = self.sessions.lock().unwrap();
+        let session = store.get_or_hydrate(session_id)?;
         let out = filter::peek_session(session, opts);
         self.record(
             session_id,
@@ -292,8 +292,8 @@ impl RlmEngine {
         batch_size: usize,
     ) -> Result<Value> {
         let started = Instant::now();
-        let store = self.sessions.lock().unwrap();
-        let session = store.get(session_id)?;
+        let mut store = self.sessions.lock().unwrap();
+        let session = store.get_or_hydrate(session_id)?;
         let out = map::map_plan(session, chunk_ids, file_pattern, batch_size);
         self.record(
             session_id,
@@ -349,6 +349,37 @@ impl RlmEngine {
         Ok(json!({ "session_id": session_id, "deleted": true }))
     }
 
+    pub fn session_cleanup(&self) -> Result<Value> {
+        let report = self.sessions.lock().unwrap().cleanup_expired()?;
+        Ok(json!({
+            "removed_count": report.removed_count,
+            "removed_ids": report.removed_ids,
+        }))
+    }
+
+    pub fn session_export(&self, session_id: &str) -> Result<Value> {
+        let session = self.sessions.lock().unwrap().export(session_id)?;
+        Ok(json!({
+            "session_id": session.id,
+            "revision": session.revision,
+            "session": serde_json::to_value(session)?,
+        }))
+    }
+
+    pub fn session_import(&self, session: ScanSession, preserve_id: bool) -> Result<Value> {
+        let imported = self
+            .sessions
+            .lock()
+            .unwrap()
+            .import_session(session, preserve_id)?;
+        Ok(json!({
+            "session_id": imported.id,
+            "revision": imported.revision,
+            "chunk_count": imported.chunks.len(),
+            "total_bytes": imported.total_bytes,
+        }))
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn task_create(
         &self,
@@ -364,7 +395,8 @@ impl RlmEngine {
         let started = Instant::now();
         let est_tokens = (prompt.len() + chunk_ids.len() * 64) as u64 / 4;
         let budget_eval = self.ensure_session_budget(session_id, 0, 1, est_tokens)?;
-        let sessions = self.sessions.lock().unwrap();
+        let mut sessions = self.sessions.lock().unwrap();
+        sessions.hydrate(session_id)?;
         let mut tasks = self.tasks.lock().unwrap();
         let result = tasks.create(
             &sessions,

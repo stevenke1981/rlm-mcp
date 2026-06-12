@@ -41,3 +41,9 @@
 **Trigger:** CLI integration tests failed because `env!("CARGO_BIN_EXE_rlm_mcp")` is not set at compile time on this toolchain.
 **Rule:** Process-level CLI tests should resolve the binary via `std::env::var("CARGO_BIN_EXE_*")` with fallback to `target/<profile>/rlm-mcp(.exe)`.
 **Source:** MCP/CLI contract tests
+
+---
+## Lesson #8 — 2026-06-12
+**Trigger:** Cross-process session reads failed when a second `SessionStore` was created before the first write finished.
+**Rule:** Use `get_or_hydrate` on read paths and tombstone+per-session lock on writes; never assume in-memory map is complete across MCP/CLI invocations.
+**Source:** P1 session storage and concurrency

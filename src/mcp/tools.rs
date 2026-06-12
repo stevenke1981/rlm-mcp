@@ -54,6 +54,22 @@ impl ToolHandler {
                 let session_id = require_str(args, "session_id")?;
                 self.rlm.session_delete(session_id)
             }
+            "rlm_session_cleanup" => self.rlm.session_cleanup(),
+            "rlm_session_export" => {
+                let session_id = require_str(args, "session_id")?;
+                self.rlm.session_export(session_id)
+            }
+            "rlm_session_import" => {
+                let preserve_id = args
+                    .get("preserve_id")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let session_val = args
+                    .get("session")
+                    .ok_or_else(|| Error::InvalidArgument("missing session".into()))?;
+                let session: crate::rlm::ScanSession = serde_json::from_value(session_val.clone())?;
+                self.rlm.session_import(session, preserve_id)
+            }
             "rlm_task_create" => self.rlm_task_create(args),
             "rlm_task_list" => Ok(self.rlm.task_list(
                 args.get("session_id").and_then(|v| v.as_str()),
@@ -472,6 +488,32 @@ pub fn tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "required": ["session_id"],
                 "properties": { "session_id": { "type": "string" } }
+            }),
+        ),
+        tool_def(
+            "rlm_session_cleanup",
+            "Remove expired sessions from cache (safe for concurrent readers).",
+            json!({ "type": "object", "properties": {} }),
+        ),
+        tool_def(
+            "rlm_session_export",
+            "Export a full session JSON blob for backup or transfer.",
+            json!({
+                "type": "object",
+                "required": ["session_id"],
+                "properties": { "session_id": { "type": "string" } }
+            }),
+        ),
+        tool_def(
+            "rlm_session_import",
+            "Import a session JSON blob (optionally preserve session_id).",
+            json!({
+                "type": "object",
+                "required": ["session"],
+                "properties": {
+                    "session": { "type": "object" },
+                    "preserve_id": { "type": "boolean", "default": false }
+                }
             }),
         ),
         tool_def(

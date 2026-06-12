@@ -1,6 +1,6 @@
 {
   "server": "rlm-mcp",
-  "tool_count": 23,
+  "tool_count": 26,
   "tools": [
     {
       "description": "List available RLM benchmark suites (S-NIAH mini-suite for CI).",
@@ -270,6 +270,14 @@
       "name": "rlm_scan"
     },
     {
+      "description": "Remove expired sessions from cache (safe for concurrent readers).",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "rlm_session_cleanup"
+    },
+    {
       "description": "Delete an RLM session and free persisted storage.",
       "inputSchema": {
         "properties": {
@@ -283,6 +291,40 @@
         "type": "object"
       },
       "name": "rlm_session_delete"
+    },
+    {
+      "description": "Export a full session JSON blob for backup or transfer.",
+      "inputSchema": {
+        "properties": {
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "type": "object"
+      },
+      "name": "rlm_session_export"
+    },
+    {
+      "description": "Import a session JSON blob (optionally preserve session_id).",
+      "inputSchema": {
+        "properties": {
+          "preserve_id": {
+            "default": false,
+            "type": "boolean"
+          },
+          "session": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "session"
+        ],
+        "type": "object"
+      },
+      "name": "rlm_session_import"
     },
     {
       "description": "List active RLM scan sessions.",

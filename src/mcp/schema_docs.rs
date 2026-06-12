@@ -44,7 +44,13 @@ fn enrich_tool(def: &Value) -> Value {
 
 fn phase_for(name: &str) -> &'static str {
     match name {
-        "rlm_scan" | "rlm_env_info" | "rlm_session_list" | "rlm_session_delete" => "load",
+        "rlm_scan"
+        | "rlm_env_info"
+        | "rlm_session_list"
+        | "rlm_session_delete"
+        | "rlm_session_cleanup"
+        | "rlm_session_export"
+        | "rlm_session_import" => "load",
         "rlm_peek" | "rlm_slice" => "filter",
         "rlm_chunk" | "rlm_map_plan" => "map",
         "rlm_reduce_schema" | "rlm_reduce_merge" => "reduce",
@@ -167,6 +173,27 @@ fn tool_meta(
             "deletion confirmation",
             json!({ "session_id": "<session_id>" }),
             "rlm-mcp session-delete --session-id <id> --json",
+        ),
+        "rlm_session_cleanup" => (
+            "session-cleanup",
+            &[],
+            "removed_count and removed_ids for expired sessions",
+            json!({}),
+            "rlm-mcp session-cleanup --json",
+        ),
+        "rlm_session_export" => (
+            "session-export",
+            &["--session-id"],
+            "full session object for backup/transfer",
+            json!({ "session_id": "<session_id>" }),
+            "rlm-mcp session-export --session-id <id> --json",
+        ),
+        "rlm_session_import" => (
+            "session-import",
+            &["--session-json", "--preserve-id", "--stdin"],
+            "imported session_id and chunk metadata",
+            json!({ "session": { "root_path": "text://x.txt", "chunks": [] }, "preserve_id": false }),
+            "rlm-mcp session-import --session-json '{...}' --json",
         ),
         "rlm_task_create" => (
             "task-create",

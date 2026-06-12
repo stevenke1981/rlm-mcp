@@ -2,7 +2,7 @@
 
 Machine-readable source of truth: call `rlm_tools_reference` (MCP) or `rlm-mcp tools-reference --json` (CLI).
 
-Contract snapshot: [`packaging/mcp/tools-list.snapshot.json`](../packaging/mcp/tools-list.snapshot.json) (23 tools in v0.1.0).
+Contract snapshot: [`packaging/mcp/tools-list.snapshot.json`](../packaging/mcp/tools-list.snapshot.json) (26 tools in v0.1.0).
 
 ## Conventions
 
@@ -49,6 +49,25 @@ List active persisted sessions. No arguments.
 | MCP argument | Required | CLI flag |
 |--------------|----------|----------|
 | `session_id` | yes | `--session-id` |
+
+### `rlm_session_cleanup`
+
+Remove expired sessions from disk. Safe for concurrent readers (tombstone + atomic files).
+
+### `rlm_session_export`
+
+| MCP argument | Required | CLI flag |
+|--------------|----------|----------|
+| `session_id` | yes | `--session-id` |
+
+Returns full `session` object for backup/transfer.
+
+### `rlm_session_import`
+
+| MCP argument | CLI flag | Default |
+|--------------|----------|---------|
+| `session` | `--session-json` / `--stdin` | required |
+| `preserve_id` | `--preserve-id` | false |
 
 ## Filter phase
 
