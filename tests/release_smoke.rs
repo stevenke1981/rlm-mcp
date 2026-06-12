@@ -110,7 +110,11 @@ fn release_binary_scan_peek_chunk_cli() {
         ])
         .output()
         .expect("scan");
-    assert!(scan.status.success(), "{}", String::from_utf8_lossy(&scan.stderr));
+    assert!(
+        scan.status.success(),
+        "{}",
+        String::from_utf8_lossy(&scan.stderr)
+    );
     let scan_json: Value =
         serde_json::from_str(String::from_utf8(scan.stdout).unwrap().trim()).unwrap();
     let session_id = scan_json["session_id"].as_str().unwrap();

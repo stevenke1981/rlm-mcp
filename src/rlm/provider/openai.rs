@@ -41,15 +41,21 @@ impl OpenAiCompatibleProvider {
         let output = body
             .pointer("/choices/0/message/content")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::Other("openai response missing choices[0].message.content".into()))?
+            .ok_or_else(|| {
+                Error::Other("openai response missing choices[0].message.content".into())
+            })?
             .to_string();
 
         let usage = body.get("usage");
-        let prompt_tokens = usage.and_then(|u| u.get("prompt_tokens")).and_then(|v| v.as_u64());
+        let prompt_tokens = usage
+            .and_then(|u| u.get("prompt_tokens"))
+            .and_then(|v| v.as_u64());
         let completion_tokens = usage
             .and_then(|u| u.get("completion_tokens"))
             .and_then(|v| v.as_u64());
-        let total_tokens = usage.and_then(|u| u.get("total_tokens")).and_then(|v| v.as_u64());
+        let total_tokens = usage
+            .and_then(|u| u.get("total_tokens"))
+            .and_then(|v| v.as_u64());
 
         let input_tokens_est = prompt_tokens.unwrap_or((output.len() / 4) as u64) as usize;
         let output_tokens_est = completion_tokens.unwrap_or((output.len() / 4) as u64) as usize;
@@ -121,7 +127,9 @@ impl SubModelProvider for OpenAiCompatibleProvider {
 
         let status = response.status();
         let body: Value = response.into_json().map_err(|e| {
-            Error::Other(format!("openai response parse failed (status {status}): {e}"))
+            Error::Other(format!(
+                "openai response parse failed (status {status}): {e}"
+            ))
         })?;
 
         if status >= 400 {
@@ -156,10 +164,7 @@ mod tests {
         let result = OpenAiCompatibleProvider::parse_chat_response(&body).unwrap();
         assert_eq!(result.output, "needle found");
         assert_eq!(result.input_tokens_est, 12);
-        assert_eq!(
-            result.usage.as_ref().unwrap().total_tokens,
-            Some(16)
-        );
+        assert_eq!(result.usage.as_ref().unwrap().total_tokens, Some(16));
     }
 
     #[test]

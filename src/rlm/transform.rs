@@ -21,10 +21,16 @@ pub fn apply(content: &str, operation: &str, params: &Value) -> Result<Value> {
                 .copied()
                 .filter(|line| seen.insert(*line))
                 .collect();
-            (lines.join("\n"), json!({ "deduped": input_lines.len().saturating_sub(lines.len()) }))
+            (
+                lines.join("\n"),
+                json!({ "deduped": input_lines.len().saturating_sub(lines.len()) }),
+            )
         }
         "sort_lines" => {
-            let reverse = params.get("reverse").and_then(|v| v.as_bool()).unwrap_or(false);
+            let reverse = params
+                .get("reverse")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             let mut lines: Vec<String> = input_lines.iter().map(|s| (*s).to_string()).collect();
             lines.sort();
             if reverse {
@@ -37,7 +43,10 @@ pub fn apply(content: &str, operation: &str, params: &Value) -> Result<Value> {
                 .get("query")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| Error::InvalidArgument("filter_lines requires query".into()))?;
-            let regex = params.get("regex").and_then(|v| v.as_bool()).unwrap_or(false);
+            let regex = params
+                .get("regex")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             let case_sensitive = params
                 .get("case_sensitive")
                 .and_then(|v| v.as_bool())

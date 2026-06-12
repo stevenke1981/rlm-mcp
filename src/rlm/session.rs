@@ -362,7 +362,11 @@ impl SessionStore {
         Ok(self.sessions.get(id).unwrap().clone())
     }
 
-    pub fn import_session(&mut self, mut session: ScanSession, preserve_id: bool) -> Result<ScanSession> {
+    pub fn import_session(
+        &mut self,
+        mut session: ScanSession,
+        preserve_id: bool,
+    ) -> Result<ScanSession> {
         if !preserve_id || session.id.is_empty() {
             session.id = Uuid::new_v4().to_string();
         }
@@ -375,8 +379,8 @@ impl SessionStore {
         session.revision = session.revision.max(1);
         assign_chunk_ids(&mut session);
         if session.expires_at_unix == 0 {
-            session.expires_at_unix = super::persistence::unix_now()
-                .saturating_add(self.config.session_ttl_secs);
+            session.expires_at_unix =
+                super::persistence::unix_now().saturating_add(self.config.session_ttl_secs);
         }
         self.sessions.insert(session.id.clone(), session.clone());
         super::persistence::persist_session(&session)?;

@@ -102,9 +102,9 @@ pub fn summarize_report(report: &BenchmarkReport) -> Value {
         .iter()
         .find(|b| b.baseline == BaselineKind::DirectFullContext.as_str());
 
-    let retrieval_beats_direct = peek.zip(direct).map(|(p, d)| {
-        p.correct && p.metrics.bytes_in < d.metrics.bytes_in
-    });
+    let retrieval_beats_direct = peek
+        .zip(direct)
+        .map(|(p, d)| p.correct && p.metrics.bytes_in < d.metrics.bytes_in);
 
     json!({
         "accuracy": { "correct": correct, "total": total },

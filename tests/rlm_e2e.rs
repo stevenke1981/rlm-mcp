@@ -351,9 +351,7 @@ fn transform_and_artifact_round_trip() {
             .unwrap();
         let session_id = scan["session_id"].as_str().unwrap();
         let env = engine.env_info(session_id).unwrap();
-        let chunk_id = env["files"][0]["chunk_ids"][0]
-            .as_str()
-            .unwrap();
+        let chunk_id = env["files"][0]["chunk_ids"][0].as_str().unwrap();
 
         let transformed = engine
             .transform(

@@ -2,11 +2,11 @@ mod command;
 mod safe;
 
 use crate::error::{Error, Result};
+pub use command::CommandSandboxBackend;
+pub use safe::SafeBuiltinBackend;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
-pub use command::CommandSandboxBackend;
-pub use safe::SafeBuiltinBackend;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -213,7 +213,8 @@ impl ReplBackend for PythonReplBackend {
 
     fn execute_transform(&self, _input: &str, _operation: &str, _params: &Value) -> Result<Value> {
         Err(Error::InvalidArgument(
-            "python backend does not support transform ops; use safe_builtin via rlm_transform".into(),
+            "python backend does not support transform ops; use safe_builtin via rlm_transform"
+                .into(),
         ))
     }
 

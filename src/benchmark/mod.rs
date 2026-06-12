@@ -9,7 +9,9 @@ pub use codeqa::{
 pub use oolong::{
     generate_fixture as generate_oolong_fixture, run as run_oolong, sum_metrics, OolongSize,
 };
-pub use sniah::{extract_needle_value, generate_fixture, run as run_sniah, SniahFixture, SniahSize};
+pub use sniah::{
+    extract_needle_value, generate_fixture, run as run_sniah, SniahFixture, SniahSize,
+};
 pub use types::{BaselineKind, BaselineResult, BenchmarkReport, RunMetrics};
 
 use crate::error::{Error, Result};

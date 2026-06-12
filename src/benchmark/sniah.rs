@@ -66,7 +66,11 @@ pub fn generate_fixture(size: SniahSize) -> SniahFixture {
     let needle_value = format!("MAGIC-{}", uuid::Uuid::new_v4().simple());
     let needle_key = "NEEDLE_KEY".to_string();
     let needle_line = format!("{needle_key}={needle_value}");
-    let id = format!("sniah-{}-{}", size_label(size), &needle_value[..8.min(needle_value.len())]);
+    let id = format!(
+        "sniah-{}-{}",
+        size_label(size),
+        &needle_value[..8.min(needle_value.len())]
+    );
 
     let mut lines = Vec::with_capacity(filler_count * 2 + 1);
     for i in 0..filler_count {
@@ -149,9 +153,7 @@ fn run_baseline(
             };
             // Model-visible context bytes (not full external storage load).
             metrics.bytes_in = evidence.len();
-            metrics.tokens_est = metrics
-                .tokens_est
-                .max((evidence.len() / 4) as u64);
+            metrics.tokens_est = metrics.tokens_est.max((evidence.len() / 4) as u64);
             Ok(BaselineResult {
                 baseline: kind.as_str().into(),
                 correct,
@@ -180,8 +182,7 @@ fn run_baseline(
 }
 
 fn run_direct(fixture: &SniahFixture) -> Result<(String, String, Option<String>, Option<String>)> {
-    let answer = extract_needle_value(&fixture.haystack, &fixture.needle_key)
-        .unwrap_or_default();
+    let answer = extract_needle_value(&fixture.haystack, &fixture.needle_key).unwrap_or_default();
     Ok((
         answer,
         fixture.haystack.clone(),
@@ -196,12 +197,12 @@ fn run_summary_compaction(
     let lines: Vec<&str> = fixture.haystack.lines().collect();
     let edge = (lines.len() / 10).max(3);
     let head: Vec<&str> = lines.iter().copied().take(edge).collect();
-    let tail: Vec<&str> = lines.iter().copied().skip(lines.len().saturating_sub(edge)).collect();
-    let compacted = head
-        .into_iter()
-        .chain(tail)
-        .collect::<Vec<_>>()
-        .join("\n");
+    let tail: Vec<&str> = lines
+        .iter()
+        .copied()
+        .skip(lines.len().saturating_sub(edge))
+        .collect();
+    let compacted = head.into_iter().chain(tail).collect::<Vec<_>>().join("\n");
     let answer = extract_needle_value(&compacted, &fixture.needle_key).unwrap_or_default();
     Ok((
         answer,
@@ -365,7 +366,9 @@ fn run_rlm_with_subcalls(
         answer,
         content,
         Some(session_id),
-        Some("Filter → recursive sub-call (mock) → reduce; accuracy scored on evidence chunk".into()),
+        Some(
+            "Filter → recursive sub-call (mock) → reduce; accuracy scored on evidence chunk".into(),
+        ),
     ))
 }
 
@@ -380,11 +383,7 @@ fn collect_engine_metrics(
 
     let tokens = budget["usage"]["tokens_est"]
         .as_u64()
-        .or_else(|| {
-            summary["total_bytes_in"]
-                .as_u64()
-                .map(|b| b / 4)
-        })
+        .or_else(|| summary["total_bytes_in"].as_u64().map(|b| b / 4))
         .unwrap_or(0);
 
     Ok(RunMetrics {

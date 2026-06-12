@@ -37,7 +37,9 @@ pub fn sanitize_name(name: &str) -> Result<String> {
         ));
     }
     if trimmed.len() > 128 {
-        return Err(Error::InvalidArgument("artifact name too long (max 128)".into()));
+        return Err(Error::InvalidArgument(
+            "artifact name too long (max 128)".into(),
+        ));
     }
     Ok(trimmed.to_string())
 }
@@ -68,9 +70,7 @@ impl ArtifactLock {
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
                     if attempt + 1 == LOCK_RETRIES {
-                        return Err(Error::Other(format!(
-                            "artifact lock busy: {session_id}"
-                        )));
+                        return Err(Error::Other(format!("artifact lock busy: {session_id}")));
                     }
                     std::thread::sleep(Duration::from_millis(LOCK_SLEEP_MS));
                 }

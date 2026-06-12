@@ -261,9 +261,7 @@ impl ToolHandler {
                 .unwrap_or(false),
         };
         if opts.bm25 && opts.query.is_none() {
-            return Err(Error::InvalidArgument(
-                "bm25 search requires query".into(),
-            ));
+            return Err(Error::InvalidArgument("bm25 search requires query".into()));
         }
         if opts.bm25 && opts.regex {
             return Err(Error::InvalidArgument(
@@ -306,8 +304,7 @@ impl ToolHandler {
             .get("output")
             .cloned()
             .ok_or_else(|| Error::InvalidArgument("missing output".into()))?;
-        self.rlm
-            .map_complete(plan_id, worker_id, batch_id, output)
+        self.rlm.map_complete(plan_id, worker_id, batch_id, output)
     }
 
     fn rlm_reduce_merge(&self, args: &Value) -> Result<Value> {
@@ -431,11 +428,7 @@ pub fn normalized_tools_snapshot() -> Value {
         a.get("name")
             .and_then(|v| v.as_str())
             .unwrap_or("")
-            .cmp(
-                b.get("name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(""),
-            )
+            .cmp(b.get("name").and_then(|v| v.as_str()).unwrap_or(""))
     });
     json!({
         "server": crate::mcp::server::SERVER_NAME,

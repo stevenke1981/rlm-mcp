@@ -78,7 +78,10 @@ pub fn default_secret_patterns() -> Vec<String> {
 
 pub fn redact_secrets(text: &str, extra_patterns: &[String]) -> String {
     let mut out = text.to_string();
-    for pat in default_secret_patterns().iter().chain(extra_patterns.iter()) {
+    for pat in default_secret_patterns()
+        .iter()
+        .chain(extra_patterns.iter())
+    {
         if out.contains(pat.as_str()) {
             out = out.replace(pat.as_str(), "[REDACTED]");
         }

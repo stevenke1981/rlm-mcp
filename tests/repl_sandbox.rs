@@ -80,8 +80,12 @@ fn repl_command_echoes_stdin_when_opted_in() {
         assert_eq!(out["backend"].as_str().unwrap(), "command");
         assert!(out["content"].as_str().unwrap().contains("PING"));
 
-        let traj = engine.trajectory_get(session_id, "json", true, &[]).unwrap();
+        let traj = engine
+            .trajectory_get(session_id, "json", true, &[])
+            .unwrap();
         let events = traj["events"].as_array().unwrap();
-        assert!(events.iter().any(|e| e["event_type"].as_str() == Some("repl_exec")));
+        assert!(events
+            .iter()
+            .any(|e| e["event_type"].as_str() == Some("repl_exec")));
     });
 }

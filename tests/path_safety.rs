@@ -56,9 +56,11 @@ fn cache_info_reports_layout() {
     std::env::set_var("RLM_CACHE_DIR", cache.path());
     let info = project::cache_info().unwrap();
     assert!(info["cache_dir"].is_string());
-    assert!(info["subdirs"].as_array().unwrap().iter().any(|s| {
-        s.as_str() == Some("rlm-sessions")
-    }));
+    assert!(info["subdirs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|s| { s.as_str() == Some("rlm-sessions") }));
     std::env::remove_var("RLM_CACHE_DIR");
 }
 

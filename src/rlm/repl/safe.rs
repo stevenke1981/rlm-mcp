@@ -1,6 +1,4 @@
-use super::{
-    ReplBackend, ReplBackendDescriptor, ReplBackendId, ReplCapabilities, SandboxLimits,
-};
+use super::{ReplBackend, ReplBackendDescriptor, ReplBackendId, ReplCapabilities, SandboxLimits};
 use crate::error::Result;
 use serde_json::Value;
 

@@ -55,17 +55,21 @@ fn cli_reduce_schema_json_contract() {
 fn cli_tools_reference_json_contract() {
     let value = run_json(&["tools-reference", "--json"]);
     assert_eq!(value["tool_count"].as_u64().unwrap(), 33);
-    assert!(value["tools"].as_array().unwrap().iter().any(|t| {
-        t["name"].as_str() == Some("rlm_scan")
-    }));
+    assert!(value["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| { t["name"].as_str() == Some("rlm_scan") }));
 }
 
 #[test]
 fn cli_benchmark_list_json_contract() {
     let value = run_json(&["benchmark", "list", "--json"]);
-    assert!(value["suites"].as_array().unwrap().iter().any(|s| {
-        s["id"].as_str() == Some("sniah")
-    }));
+    assert!(value["suites"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|s| { s["id"].as_str() == Some("sniah") }));
 }
 
 #[test]

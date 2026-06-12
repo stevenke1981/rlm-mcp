@@ -27,9 +27,11 @@ fn assert_sniah_suite(report: &serde_json::Value, size: &str) {
     assert!(baseline(report, BaselineKind::DirectFullContext)["correct"]
         .as_bool()
         .unwrap());
-    assert!(!baseline(report, BaselineKind::SummaryCompaction)["correct"]
-        .as_bool()
-        .unwrap());
+    assert!(
+        !baseline(report, BaselineKind::SummaryCompaction)["correct"]
+            .as_bool()
+            .unwrap()
+    );
 
     for kind in [
         BaselineKind::RetrievalPeek,
@@ -56,9 +58,11 @@ fn assert_sniah_suite(report: &serde_json::Value, size: &str) {
 
     let summary = &report["summary"];
     assert_eq!(summary["accuracy"]["correct"].as_u64().unwrap(), 4);
-    assert!(summary["qualitative_claims"]["retrieval_lower_cost_than_direct"]
-        .as_bool()
-        .unwrap());
+    assert!(
+        summary["qualitative_claims"]["retrieval_lower_cost_than_direct"]
+            .as_bool()
+            .unwrap()
+    );
 }
 
 #[test]

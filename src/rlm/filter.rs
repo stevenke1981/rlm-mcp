@@ -162,7 +162,8 @@ fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
     let total_matches = scored.len();
     let top = scored.into_iter().take(opts.limit).collect::<Vec<_>>();
 
-    let mut file_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut file_counts: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     let mut results = Vec::new();
 
     for (idx, score) in top {
@@ -351,10 +352,7 @@ mod tests {
         assert_eq!(out["search_mode"].as_str().unwrap(), "bm25");
         assert!(out["returned"].as_u64().unwrap() >= 1);
         let first = &out["matches"][0];
-        assert!(first["preview"]
-            .as_str()
-            .unwrap()
-            .contains("NEEDLE_KEY"));
+        assert!(first["preview"].as_str().unwrap().contains("NEEDLE_KEY"));
         assert!(first["bm25_score"].as_f64().unwrap() > 0.0);
     }
 }

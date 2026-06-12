@@ -30,12 +30,16 @@ fn codeqa_mini_suite_runs_all_baselines() {
         assert_eq!(report["baselines"].as_array().unwrap().len(), 5);
 
         let expected = report["needle_value"].as_str().unwrap();
-        assert!(baseline(&report, BaselineKind::DirectFullContext)["correct"]
-            .as_bool()
-            .unwrap());
-        assert!(!baseline(&report, BaselineKind::SummaryCompaction)["correct"]
-            .as_bool()
-            .unwrap());
+        assert!(
+            baseline(&report, BaselineKind::DirectFullContext)["correct"]
+                .as_bool()
+                .unwrap()
+        );
+        assert!(
+            !baseline(&report, BaselineKind::SummaryCompaction)["correct"]
+                .as_bool()
+                .unwrap()
+        );
 
         for kind in [
             BaselineKind::RetrievalPeek,
@@ -56,16 +60,19 @@ fn codeqa_mini_suite_runs_all_baselines() {
         let peek_bytes = baseline(&report, BaselineKind::RetrievalPeek)["metrics"]["bytes_in"]
             .as_u64()
             .unwrap();
-        let direct_bytes = baseline(&report, BaselineKind::DirectFullContext)["metrics"]["bytes_in"]
+        let direct_bytes = baseline(&report, BaselineKind::DirectFullContext)["metrics"]
+            ["bytes_in"]
             .as_u64()
             .unwrap();
         assert!(peek_bytes < direct_bytes);
 
         let summary = &report["summary"];
         assert_eq!(summary["accuracy"]["correct"].as_u64().unwrap(), 4);
-        assert!(summary["qualitative_claims"]["compaction_misses_buried_symbol"]
-            .as_bool()
-            .unwrap());
+        assert!(
+            summary["qualitative_claims"]["compaction_misses_buried_symbol"]
+                .as_bool()
+                .unwrap()
+        );
     });
 }
 

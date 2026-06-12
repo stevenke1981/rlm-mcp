@@ -148,7 +148,9 @@ pub fn run_cli(args: &[String]) -> Result<()> {
                 .get_str("session-json")
                 .map(|s| s.to_string())
                 .or_else(|| read_stdin_content(&flags).ok())
-                .ok_or_else(|| Error::InvalidArgument("provide --session-json or --stdin".into()))?;
+                .ok_or_else(|| {
+                    Error::InvalidArgument("provide --session-json or --stdin".into())
+                })?;
             let parsed: serde_json::Value = serde_json::from_str(&json_str)?;
             let session: crate::rlm::ScanSession = if let Some(inner) = parsed.get("session") {
                 serde_json::from_value(inner.clone())?

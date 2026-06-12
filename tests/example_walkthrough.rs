@@ -43,10 +43,7 @@ fn log_diagnosis_walkthrough_matches_docs() {
             )
             .unwrap();
         assert_eq!(peek["total_match_lines"].as_u64().unwrap(), 3);
-        let chunk_id = peek["matches"][0]["chunk_id"]
-            .as_str()
-            .unwrap()
-            .to_string();
+        let chunk_id = peek["matches"][0]["chunk_id"].as_str().unwrap().to_string();
 
         let plan = engine
             .map_plan(session_id, Some(std::slice::from_ref(&chunk_id)), None, 1)
@@ -99,7 +96,9 @@ fn log_diagnosis_walkthrough_matches_docs() {
         assert!(reduced["completed_count"].as_u64().unwrap() >= 1);
 
         engine.trajectory_record_final(session_id, "disk full caused write+flush errors", 3);
-        let traj = engine.trajectory_get(session_id, "json", true, &[]).unwrap();
+        let traj = engine
+            .trajectory_get(session_id, "json", true, &[])
+            .unwrap();
         assert!(traj["summary"]["event_count"].as_u64().unwrap() >= 6);
     });
 }

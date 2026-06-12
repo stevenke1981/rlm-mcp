@@ -3,10 +3,7 @@ use serde_json::{json, Value};
 
 /// Structured schema reference for agent integration (MCP + CLI).
 pub fn tools_reference() -> Value {
-    let mut entries: Vec<Value> = tool_definitions()
-        .iter()
-        .map(enrich_tool)
-        .collect();
+    let mut entries: Vec<Value> = tool_definitions().iter().map(enrich_tool).collect();
     entries.sort_by(|a, b| {
         a["name"]
             .as_str()
@@ -51,19 +48,11 @@ fn phase_for(name: &str) -> &'static str {
         | "rlm_session_cleanup"
         | "rlm_session_export"
         | "rlm_session_import" => "load",
-        "rlm_peek"
-        | "rlm_slice"
-        | "rlm_transform"
-        | "rlm_repl_info"
-        | "rlm_repl_execute"
-        | "rlm_artifact_read"
-        | "rlm_artifact_write" => "repl",
+        "rlm_peek" | "rlm_slice" | "rlm_transform" | "rlm_repl_info" | "rlm_repl_execute"
+        | "rlm_artifact_read" | "rlm_artifact_write" => "repl",
         "rlm_chunk" | "rlm_map_plan" | "rlm_map_claim" | "rlm_map_complete" => "map",
         "rlm_reduce_schema" | "rlm_reduce_merge" => "reduce",
-        "rlm_task_create"
-        | "rlm_task_list"
-        | "rlm_task_result"
-        | "rlm_task_reduce"
+        "rlm_task_create" | "rlm_task_list" | "rlm_task_result" | "rlm_task_reduce"
         | "rlm_task_cancel" => "recurse",
         "rlm_trajectory_get" | "rlm_trajectory_final" | "rlm_budget_status" => "observe",
         "rlm_budget_configure" => "control",

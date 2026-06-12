@@ -159,7 +159,10 @@ fn summarize_codeqa(report: &BenchmarkReport) -> serde_json::Value {
                 "expected_symbol": report.needle_value,
             }),
         );
-        if let Some(claims) = obj.get_mut("qualitative_claims").and_then(|v| v.as_object_mut()) {
+        if let Some(claims) = obj
+            .get_mut("qualitative_claims")
+            .and_then(|v| v.as_object_mut())
+        {
             claims.insert(
                 "compaction_misses_buried_symbol".into(),
                 json!(report
@@ -232,9 +235,7 @@ fn run_baseline(
                 }
             };
             metrics.bytes_in = evidence.len();
-            metrics.tokens_est = metrics
-                .tokens_est
-                .max((evidence.len() / 4) as u64);
+            metrics.tokens_est = metrics.tokens_est.max((evidence.len() / 4) as u64);
             Ok(BaselineResult {
                 baseline: kind.as_str().into(),
                 correct,

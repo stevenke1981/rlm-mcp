@@ -60,7 +60,10 @@ impl CommandSandboxBackend {
         if parts.is_empty() {
             return Err(Error::InvalidArgument("RLM_REPL_COMMAND is empty".into()));
         }
-        Ok((parts[0].to_string(), parts[1..].iter().map(|s| (*s).to_string()).collect()))
+        Ok((
+            parts[0].to_string(),
+            parts[1..].iter().map(|s| (*s).to_string()).collect(),
+        ))
     }
 
     fn working_dir(session_id: &str) -> Result<PathBuf> {
@@ -174,7 +177,8 @@ impl ReplBackend for CommandSandboxBackend {
 
     fn execute_transform(&self, _input: &str, _operation: &str, _params: &Value) -> Result<Value> {
         Err(Error::InvalidArgument(
-            "command backend does not support transform ops; use safe_builtin via rlm_transform".into(),
+            "command backend does not support transform ops; use safe_builtin via rlm_transform"
+                .into(),
         ))
     }
 

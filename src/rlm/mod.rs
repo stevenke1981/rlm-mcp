@@ -4,17 +4,17 @@ mod budget;
 mod config;
 mod env;
 mod filter;
-mod repl;
-mod transform;
 mod map;
 mod map_ledger;
 mod persistence;
 mod provider;
 mod reduce;
+mod repl;
 mod safety;
 mod session;
 mod task;
 mod trajectory;
+mod transform;
 mod workflow;
 
 pub use budget::{BudgetMode, SessionBudget};
@@ -241,12 +241,8 @@ impl RlmEngine {
         let started = Instant::now();
         let input = self.resolve_text_input(session_id, chunk_id, artifact_name, content)?;
         let input_len = input.len();
-        let out = repl::ReplBackend::execute_transform(
-            &repl::safe_backend(),
-            &input,
-            operation,
-            params,
-        )?;
+        let out =
+            repl::ReplBackend::execute_transform(&repl::safe_backend(), &input, operation, params)?;
         self.record(
             session_id,
             "transform",
@@ -293,9 +289,9 @@ impl RlmEngine {
 
         let exec_backend: Box<dyn repl::ReplBackend> = match backend_id {
             repl::ReplBackendId::SafeBuiltin => Box::new(repl::SafeBuiltinBackend),
-            repl::ReplBackendId::Command => {
-                Box::new(repl::CommandSandboxBackend::new(repl::SandboxLimits::from_env()))
-            }
+            repl::ReplBackendId::Command => Box::new(repl::CommandSandboxBackend::new(
+                repl::SandboxLimits::from_env(),
+            )),
             repl::ReplBackendId::Python => {
                 return Err(Error::InvalidArgument(
                     "python REPL backend is not implemented; use backend=command".into(),
@@ -372,10 +368,7 @@ impl RlmEngine {
     ) -> Result<Value> {
         let started = Instant::now();
         let out = artifacts::read_artifact(session_id, name, start_line, end_line)?;
-        let bytes = out
-            .get("bytes")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as usize;
+        let bytes = out.get("bytes").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
         self.record(
             session_id,
             "artifact_read",

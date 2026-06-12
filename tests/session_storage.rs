@@ -1,7 +1,7 @@
-use rlm_mcp::rlm::{PeekOptions, RlmEngine};
-use serde_json::json;
 use rlm_mcp::rlm::SessionStore;
+use rlm_mcp::rlm::{PeekOptions, RlmEngine};
 use rlm_mcp::test_lock;
+use serde_json::json;
 use std::collections::HashMap;
 use tempfile::TempDir;
 
@@ -80,9 +80,7 @@ fn multi_worker_map_batches_fixture() {
             .unwrap();
         let session_id = scan["session_id"].as_str().unwrap();
 
-        let plan = engine
-            .map_plan(session_id, None, None, 2)
-            .unwrap();
+        let plan = engine.map_plan(session_id, None, None, 2).unwrap();
         assert_eq!(plan["total_chunks"].as_u64().unwrap(), 1);
         assert!(!plan["batches"].as_array().unwrap().is_empty());
         let plan_id = plan["plan_id"].as_str().unwrap();

@@ -45,7 +45,9 @@ fn is_session_artifact(path: &Path) -> bool {
 }
 
 fn session_id_from_path(path: &Path) -> Option<String> {
-    path.file_stem().and_then(|s| s.to_str()).map(|s| s.to_string())
+    path.file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_string())
 }
 
 struct SessionLock {

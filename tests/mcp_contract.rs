@@ -18,7 +18,10 @@ fn tools_list_matches_snapshot() {
         serde_json::from_str(&fs::read_to_string(snapshot_path()).expect("read snapshot"))
             .expect("parse snapshot");
     let current = normalized_tools_snapshot();
-    assert_eq!(current, snapshot, "tools/list drifted from packaging snapshot");
+    assert_eq!(
+        current, snapshot,
+        "tools/list drifted from packaging snapshot"
+    );
 }
 
 #[test]

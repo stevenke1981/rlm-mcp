@@ -123,7 +123,10 @@ fn create_cache_layout(root: &Path) -> Result<()> {
     for sub in CACHE_SUBDIRS {
         let dir = root.join(sub);
         std::fs::create_dir_all(&dir).map_err(|e| {
-            Error::Other(format!("failed to create cache subdir {}: {e}", dir.display()))
+            Error::Other(format!(
+                "failed to create cache subdir {}: {e}",
+                dir.display()
+            ))
         })?;
         set_private_dir(&dir)?;
     }

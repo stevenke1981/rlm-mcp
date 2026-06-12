@@ -216,10 +216,7 @@ pub fn claim(plan_id: &str, worker_id: &str, batch_id: Option<&str>) -> Result<V
                 return Err(Error::InvalidArgument(format!(
                     "batch {} already claimed by {}",
                     plan.batches[idx].batch_id,
-                    plan.batches[idx]
-                        .claimed_by
-                        .as_deref()
-                        .unwrap_or("unknown")
+                    plan.batches[idx].claimed_by.as_deref().unwrap_or("unknown")
                 )));
             }
         }
@@ -252,12 +249,7 @@ pub fn claim(plan_id: &str, worker_id: &str, batch_id: Option<&str>) -> Result<V
     }))
 }
 
-pub fn complete(
-    plan_id: &str,
-    worker_id: &str,
-    batch_id: &str,
-    output: Value,
-) -> Result<Value> {
+pub fn complete(plan_id: &str, worker_id: &str, batch_id: &str, output: Value) -> Result<Value> {
     if output.get("findings").and_then(|v| v.as_array()).is_none() {
         return Err(Error::InvalidArgument(
             "worker output must include findings array".into(),
