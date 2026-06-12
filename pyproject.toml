@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "codebase-memory-rlm-mcp"
+version = "0.1.0"
+description = "RLM orchestration MCP server integrated with codebase-memory-mcp"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+  "mcp>=1.0.0",
+]
+
+[project.scripts]
+codebase-memory-rlm-mcp = "codebase_memory_rlm_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/codebase_memory_rlm_mcp"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/codebase_memory_rlm_mcp", "SKILL.md", "README.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
