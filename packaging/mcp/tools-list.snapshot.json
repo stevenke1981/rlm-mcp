@@ -1,7 +1,57 @@
 {
   "server": "rlm-mcp",
-  "tool_count": 28,
+  "tool_count": 31,
   "tools": [
+    {
+      "description": "Read a session artifact (optional line range).",
+      "inputSchema": {
+        "properties": {
+          "end_line": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "start_line": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "name": "rlm_artifact_read"
+    },
+    {
+      "description": "Persist derived text under the session artifact store.",
+      "inputSchema": {
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "source_chunk_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "name": "rlm_artifact_write"
+    },
     {
       "description": "List available RLM benchmark suites (S-NIAH mini-suite for CI).",
       "inputSchema": {
@@ -609,6 +659,48 @@
         "type": "object"
       },
       "name": "rlm_trajectory_get"
+    },
+    {
+      "description": "Apply safe deterministic text transforms (no code execution).",
+      "inputSchema": {
+        "properties": {
+          "artifact_name": {
+            "type": "string"
+          },
+          "chunk_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "dedupe_lines",
+              "sort_lines",
+              "filter_lines",
+              "head_lines",
+              "tail_lines",
+              "truncate_chars",
+              "add_line_numbers",
+              "count_lines",
+              "normalize_whitespace"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "type": "object"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "operation"
+        ],
+        "type": "object"
+      },
+      "name": "rlm_transform"
     },
     {
       "description": "Return RLM loop guidance: overview, load, filter, map, or reduce.",

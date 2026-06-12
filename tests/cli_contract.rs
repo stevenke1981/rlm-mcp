@@ -54,7 +54,7 @@ fn cli_reduce_schema_json_contract() {
 #[test]
 fn cli_tools_reference_json_contract() {
     let value = run_json(&["tools-reference", "--json"]);
-    assert_eq!(value["tool_count"].as_u64().unwrap(), 28);
+    assert_eq!(value["tool_count"].as_u64().unwrap(), 31);
     assert!(value["tools"].as_array().unwrap().iter().any(|t| {
         t["name"].as_str() == Some("rlm_scan")
     }));

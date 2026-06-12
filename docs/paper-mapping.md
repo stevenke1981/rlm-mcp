@@ -48,10 +48,11 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 | List files / variables | `rlm_env_info` → `files`, `variables` | **Done** | e2e scan + env-info |
 | Slice line ranges | `rlm_slice` (`src/rlm/env.rs`) | **Done** | walkthrough §2 |
 | Search substrings | `rlm_peek` (`src/rlm/filter.rs`) | **Done** | `tests/rlm_e2e.rs` |
-| Transform snippets / derived artifacts | Paper REPL `transform` / read-write artifacts | **Planned** | TODO P0: `rlm_transform`, `rlm_artifact_*` not in tool list |
+| Transform snippets / derived artifacts | `rlm_transform`, `rlm_artifact_write`, `rlm_artifact_read` | **Done** | `src/rlm/transform.rs`, `src/rlm/artifacts.rs`, `docs/repl-execution-model.md` |
 | Python REPL with prompt as variable | — | **Differs** | Agent + MCP tools replace embedded REPL; P2 optional sandbox backends |
-| Safe default (no arbitrary code exec) | All default tools are read/merge only | **Done** | `packaging/mcp/tools-list.snapshot.json` |
-| Executable REPL with time/memory limits | — | **Planned** | TODO P0/P2 |
+| Safe default (no arbitrary code exec) | Built-in transform ops only; no sandbox by default | **Done** | transform unit tests |
+| Output byte limits | `RLM_MAX_TRANSFORM_BYTES`, `RLM_MAX_ARTIFACT_BYTES` | **Done** | `docs/repl-execution-model.md` |
+| Executable REPL with time/memory limits | — | **Planned** | P2 sandbox backends; policy documented |
 
 **Acceptance:** Agents interact with context as an external object. Unsafe execution is not enabled by default.
 
@@ -167,7 +168,7 @@ Full limitations write-up: [`limitations.md`](limitations.md). Benchmark guide: 
 
 ---
 
-## 10. MCP / CLI surface (28 tools)
+## 10. MCP / CLI surface (31 tools)
 
 All paper-loop phases are exposed as MCP tools with CLI equivalents (`src/cli.rs`). Contract tests:
 
@@ -178,7 +179,7 @@ All paper-loop phases are exposed as MCP tools with CLI equivalents (`src/cli.rs
 | tools/list snapshot | `src/mcp/server.rs` (`write_tools_snapshot`) |
 | Schema docs | `docs/tools.md`, `rlm_tools_reference` |
 
-Snapshot: `packaging/mcp/tools-list.snapshot.json` (28 tools).
+Snapshot: `packaging/mcp/tools-list.snapshot.json` (31 tools).
 
 ---
 
@@ -198,7 +199,7 @@ Priority gaps that prevent calling the repo “paper-complete”:
 
 | Priority | Item |
 |----------|------|
-| P0 | Executable REPL decision |
+| P0 | Executable REPL sandbox backends (P2) |
 | P1 | Large benchmark fixtures; provider dollar cost |
 | P2 | OpenAI-compatible provider; GitHub release workflow; release artifact smoke |
 | P3 | — (limitations + benchmarks docs shipped) |

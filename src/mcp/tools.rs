@@ -44,6 +44,9 @@ impl ToolHandler {
                     .unwrap_or(start as u64) as usize;
                 self.rlm.slice(session_id, chunk_id, start, end)
             }
+            "rlm_transform" => self.rlm_transform(args),
+            "rlm_artifact_write" => self.rlm_artifact_write(args),
+            "rlm_artifact_read" => self.rlm_artifact_read(args),
             "rlm_chunk" => self.rlm_chunk(args),
             "rlm_peek" => self.rlm_peek(args),
             "rlm_map_plan" => self.rlm_map_plan(args),
@@ -152,6 +155,47 @@ impl ToolHandler {
         let virtual_path = args.get("virtual_path").and_then(|v| v.as_str());
         let variable = args.get("variable_name").and_then(|v| v.as_str());
         self.rlm.scan(path, content, virtual_path, variable)
+    }
+
+    fn rlm_transform(&self, args: &Value) -> Result<Value> {
+        let session_id = require_str(args, "session_id")?;
+        let operation = require_str(args, "operation")?;
+        let params = args.get("params").cloned().unwrap_or(json!({}));
+        let chunk_id = args.get("chunk_id").and_then(|v| v.as_str());
+        let artifact_name = args.get("artifact_name").and_then(|v| v.as_str());
+        let content = args.get("content").and_then(|v| v.as_str());
+        self.rlm.transform(
+            session_id,
+            operation,
+            &params,
+            chunk_id,
+            artifact_name,
+            content,
+        )
+    }
+
+    fn rlm_artifact_write(&self, args: &Value) -> Result<Value> {
+        let session_id = require_str(args, "session_id")?;
+        let name = require_str(args, "name")?;
+        let content = args.get("content").and_then(|v| v.as_str());
+        let source_chunk_id = args.get("source_chunk_id").and_then(|v| v.as_str());
+        self.rlm
+            .artifact_write(session_id, name, content, source_chunk_id)
+    }
+
+    fn rlm_artifact_read(&self, args: &Value) -> Result<Value> {
+        let session_id = require_str(args, "session_id")?;
+        let name = require_str(args, "name")?;
+        let start_line = args
+            .get("start_line")
+            .and_then(|v| v.as_u64())
+            .map(|n| n as usize);
+        let end_line = args
+            .get("end_line")
+            .and_then(|v| v.as_u64())
+            .map(|n| n as usize);
+        self.rlm
+            .artifact_read(session_id, name, start_line, end_line)
     }
 
     fn rlm_chunk(&self, args: &Value) -> Result<Value> {
@@ -456,6 +500,57 @@ pub fn tool_definitions() -> Vec<Value> {
                 "properties": {
                     "session_id": { "type": "string" },
                     "chunk_id": { "type": "string" },
+                    "start_line": { "type": "integer" },
+                    "end_line": { "type": "integer" }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_transform",
+            "Apply safe deterministic text transforms (no code execution).",
+            json!({
+                "type": "object",
+                "required": ["session_id", "operation"],
+                "properties": {
+                    "session_id": { "type": "string" },
+                    "operation": {
+                        "type": "string",
+                        "enum": [
+                            "dedupe_lines", "sort_lines", "filter_lines", "head_lines",
+                            "tail_lines", "truncate_chars", "add_line_numbers",
+                            "count_lines", "normalize_whitespace"
+                        ]
+                    },
+                    "params": { "type": "object" },
+                    "chunk_id": { "type": "string" },
+                    "artifact_name": { "type": "string" },
+                    "content": { "type": "string" }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_artifact_write",
+            "Persist derived text under the session artifact store.",
+            json!({
+                "type": "object",
+                "required": ["session_id", "name"],
+                "properties": {
+                    "session_id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "content": { "type": "string" },
+                    "source_chunk_id": { "type": "string" }
+                }
+            }),
+        ),
+        tool_def(
+            "rlm_artifact_read",
+            "Read a session artifact (optional line range).",
+            json!({
+                "type": "object",
+                "required": ["session_id", "name"],
+                "properties": {
+                    "session_id": { "type": "string" },
+                    "name": { "type": "string" },
                     "start_line": { "type": "integer" },
                     "end_line": { "type": "integer" }
                 }

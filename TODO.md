@@ -46,6 +46,9 @@ Definition of done:
   - `rlm_session_delete`
   - `rlm_env_info`
   - `rlm_slice`
+  - `rlm_transform`
+  - `rlm_artifact_read`
+  - `rlm_artifact_write`
   - `rlm_map_plan`
   - `rlm_map_claim`
   - `rlm_map_complete`
@@ -101,10 +104,10 @@ Acceptance criteria:
   - search substrings
   - transform selected snippets
   - produce derived artifacts
-- [ ] Decide execution model:
-  - safe Rust expression DSL, or
-  - embedded scripting sandbox, or
-  - external Python REPL mode behind an explicit flag.
+- [x] Decide execution model:
+  - safe built-in transform ops (default; see `docs/repl-execution-model.md`)
+  - embedded scripting sandbox (deferred P2)
+  - external Python REPL mode behind an explicit flag (deferred P2)
 - [x] Add MCP tools for environment interaction if needed:
   - `rlm_env_info`
   - `rlm_slice`
@@ -113,7 +116,8 @@ Acceptance criteria:
   - `rlm_artifact_read`
   - `rlm_artifact_write`
 - [x] Keep default mode safe and deterministic.
-- [ ] Add command/time/memory limits for any executable REPL mode.
+- [x] Add output byte limits for safe REPL transforms/artifacts (`RLM_MAX_TRANSFORM_BYTES`, `RLM_MAX_ARTIFACT_BYTES`).
+- [ ] Add command/time/memory limits for executable REPL sandboxes (P2 backends; policy in `docs/repl-execution-model.md`).
 
 Acceptance criteria:
 
@@ -199,7 +203,7 @@ Acceptance criteria:
 - [x] Optionally support provider-backed subcalls:
   - dry-run provider for tests
   - mock provider for tests
-- [ ] Optionally support provider-backed subcalls:
+- [x] Optionally support provider-backed subcalls:
   - OpenAI-compatible API
   - local command provider
 - [x] Add recursion controls:
@@ -373,7 +377,8 @@ Acceptance criteria:
 
 - [ ] Add secret redaction for trajectory exports.
 - [ ] Add binary-file detection.
-- [ ] Add max output size for chunks and transform outputs.
+- [x] Add max output size for transform and artifact outputs.
+- [ ] Add max output size for chunk reads.
 - [x] Add explicit opt-in for network/provider calls.
 - [ ] Add safe temp directory handling.
 - [ ] Add Windows path traversal tests.

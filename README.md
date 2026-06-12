@@ -114,6 +114,7 @@ cargo build --release
 |-------|-------|---------|
 | Load | `rlm_scan`, `rlm_env_info` | Load path or text into session; inspect metadata |
 | Filter | `rlm_peek`, `rlm_slice` | Narrow candidates (substring, glob, regex, line range) |
+| REPL | `rlm_env_info`, `rlm_slice`, `rlm_transform`, `rlm_artifact_*` | Safe snippet transforms and derived artifacts |
 | Map | `rlm_chunk`, `rlm_map_plan`, `rlm_map_claim`, `rlm_map_complete` | Paginated chunks; coordinated parallel workers |
 | Reduce | `rlm_reduce_schema`, `rlm_reduce_merge` | Merge worker JSON; decide if recursion needed |
 | Recurse | `rlm_task_create`, `rlm_task_list`, `rlm_task_result`, `rlm_task_reduce` | Sub-tasks (`mock`/`dry-run` offline; `command`/`openai` opt-in) |

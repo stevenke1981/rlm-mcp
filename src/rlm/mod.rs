@@ -1,8 +1,10 @@
+mod artifacts;
 mod bm25;
 mod budget;
 mod config;
 mod env;
 mod filter;
+mod transform;
 mod map;
 mod map_ledger;
 mod persistence;
@@ -185,6 +187,133 @@ impl RlmEngine {
                 "start_line": start_line,
                 "end_line": end_line,
                 "line_count": out["line_count"],
+            }),
+            0,
+            trajectory::detail_size(&out),
+            started,
+        );
+        Ok(out)
+    }
+
+    fn resolve_text_input(
+        &self,
+        session_id: &str,
+        chunk_id: Option<&str>,
+        artifact_name: Option<&str>,
+        content: Option<&str>,
+    ) -> Result<String> {
+        if let Some(text) = content {
+            return Ok(text.to_string());
+        }
+        if let Some(name) = artifact_name {
+            let read = artifacts::read_artifact(session_id, name, None, None)?;
+            return read
+                .get("content")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| Error::Other("artifact read missing content".into()));
+        }
+        if let Some(id) = chunk_id {
+            let mut store = self.sessions.lock().unwrap();
+            let chunk = store.get_chunk(session_id, id)?.clone();
+            return Ok(chunk.content);
+        }
+        Err(Error::InvalidArgument(
+            "provide content, artifact_name, or chunk_id".into(),
+        ))
+    }
+
+    pub fn transform(
+        &self,
+        session_id: &str,
+        operation: &str,
+        params: &Value,
+        chunk_id: Option<&str>,
+        artifact_name: Option<&str>,
+        content: Option<&str>,
+    ) -> Result<Value> {
+        let started = Instant::now();
+        let input = self.resolve_text_input(session_id, chunk_id, artifact_name, content)?;
+        let input_len = input.len();
+        let out = transform::apply(&input, operation, params)?;
+        self.record(
+            session_id,
+            "transform",
+            None,
+            json!({
+                "operation": operation,
+                "input_chars": input_len,
+                "output_chars": out.get("output_chars"),
+                "truncated": out.get("truncated"),
+            }),
+            input_len,
+            trajectory::detail_size(&out),
+            started,
+        );
+        Ok(out)
+    }
+
+    pub fn transform_operations(&self) -> Value {
+        transform::supported_operations()
+    }
+
+    pub fn artifact_write(
+        &self,
+        session_id: &str,
+        name: &str,
+        content: Option<&str>,
+        source_chunk_id: Option<&str>,
+    ) -> Result<Value> {
+        let started = Instant::now();
+        let body = if let Some(text) = content {
+            text.to_string()
+        } else if let Some(chunk_id) = source_chunk_id {
+            let mut store = self.sessions.lock().unwrap();
+            store.get_chunk(session_id, chunk_id)?.content.clone()
+        } else {
+            return Err(Error::InvalidArgument(
+                "provide content or source_chunk_id".into(),
+            ));
+        };
+        let byte_len = body.len();
+        let out = artifacts::write_artifact(session_id, name, &body)?;
+        self.record(
+            session_id,
+            "artifact_write",
+            None,
+            json!({
+                "name": out.get("name"),
+                "bytes": byte_len,
+            }),
+            byte_len,
+            trajectory::detail_size(&out),
+            started,
+        );
+        Ok(out)
+    }
+
+    pub fn artifact_read(
+        &self,
+        session_id: &str,
+        name: &str,
+        start_line: Option<usize>,
+        end_line: Option<usize>,
+    ) -> Result<Value> {
+        let started = Instant::now();
+        let out = artifacts::read_artifact(session_id, name, start_line, end_line)?;
+        let bytes = out
+            .get("bytes")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as usize;
+        self.record(
+            session_id,
+            "artifact_read",
+            None,
+            json!({
+                "name": name,
+                "bytes": bytes,
+                "start_line": start_line,
+                "end_line": end_line,
             }),
             0,
             trajectory::detail_size(&out),

@@ -337,3 +337,61 @@ fn budget_limits_and_cancel() {
         assert!(err.to_string().contains("cancelled"));
     });
 }
+
+#[test]
+fn transform_and_artifact_round_trip() {
+    with_cache(|engine| {
+        let scan = engine
+            .scan(
+                None,
+                Some("alpha\nbeta\nalpha\ngamma\n"),
+                Some("lines.txt"),
+                None,
+            )
+            .unwrap();
+        let session_id = scan["session_id"].as_str().unwrap();
+        let env = engine.env_info(session_id).unwrap();
+        let chunk_id = env["files"][0]["chunk_ids"][0]
+            .as_str()
+            .unwrap();
+
+        let transformed = engine
+            .transform(
+                session_id,
+                "dedupe_lines",
+                &json!({}),
+                Some(chunk_id),
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(transformed["content"], "alpha\nbeta\ngamma");
+
+        engine
+            .artifact_write(
+                session_id,
+                "deduped.txt",
+                Some(transformed["content"].as_str().unwrap()),
+                None,
+            )
+            .unwrap();
+
+        let read = engine
+            .artifact_read(session_id, "deduped.txt", None, None)
+            .unwrap();
+        assert_eq!(read["content"], "alpha\nbeta\ngamma");
+
+        let traj = engine
+            .trajectory_get(session_id, "json", true, &[])
+            .unwrap();
+        let types: Vec<_> = traj["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|e| e["event_type"].as_str())
+            .collect();
+        assert!(types.contains(&"transform"));
+        assert!(types.contains(&"artifact_write"));
+        assert!(types.contains(&"artifact_read"));
+    });
+}

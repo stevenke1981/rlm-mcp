@@ -1,14 +1,15 @@
 use crate::error::{Error, Result};
 use crate::rlm::PeekOptions;
 use crate::rlm::RlmEngine;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::io::{self, Read};
 
 pub fn run_cli(args: &[String]) -> Result<()> {
     if args.is_empty() {
         return Err(Error::InvalidArgument(
             "usage: rlm-mcp <command> [options]\n\
-             commands: scan, peek, chunk, env-info, slice, map-plan, map-claim, map-complete, reduce-schema, reduce-merge, \
+             commands: scan, peek, chunk, env-info, slice, transform, artifact-write, artifact-read, \
+             map-plan, map-claim, map-complete, reduce-schema, reduce-merge, \
              session-list, session-delete, session-cleanup, session-export, session-import, \
              task-create, task-list, task-result, task-reduce, \
              trajectory-get, trajectory-final, budget-configure, budget-status, task-cancel, \
@@ -70,6 +71,33 @@ pub fn run_cli(args: &[String]) -> Result<()> {
             flags.require_str("chunk-id")?,
             flags.get_usize("start").unwrap_or(1),
             flags.get_usize("end").unwrap_or(1),
+        )?,
+        "transform" => {
+            let params = flags
+                .get_str("params")
+                .map(serde_json::from_str::<Value>)
+                .transpose()?
+                .unwrap_or_else(|| json!({}));
+            engine.transform(
+                flags.require_str("session-id")?,
+                flags.require_str("op")?,
+                &params,
+                flags.get_str("chunk-id"),
+                flags.get_str("artifact"),
+                flags.get_str("content"),
+            )?
+        }
+        "artifact-write" => engine.artifact_write(
+            flags.require_str("session-id")?,
+            flags.require_str("name")?,
+            flags.get_str("content"),
+            flags.get_str("chunk-id"),
+        )?,
+        "artifact-read" => engine.artifact_read(
+            flags.require_str("session-id")?,
+            flags.require_str("name")?,
+            flags.get_usize("start"),
+            flags.get_usize("end"),
         )?,
         "map-plan" => engine.map_plan(
             flags.require_str("session-id")?,

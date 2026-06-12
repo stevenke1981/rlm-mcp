@@ -51,7 +51,9 @@ fn phase_for(name: &str) -> &'static str {
         | "rlm_session_cleanup"
         | "rlm_session_export"
         | "rlm_session_import" => "load",
-        "rlm_peek" | "rlm_slice" => "filter",
+        "rlm_peek" | "rlm_slice" | "rlm_transform" | "rlm_artifact_read" | "rlm_artifact_write" => {
+            "repl"
+        }
         "rlm_chunk" | "rlm_map_plan" | "rlm_map_claim" | "rlm_map_complete" => "map",
         "rlm_reduce_schema" | "rlm_reduce_merge" => "reduce",
         "rlm_task_create"
@@ -124,6 +126,27 @@ fn tool_meta(
             "content slice for line range within one chunk",
             json!({ "session_id": "<session_id>", "chunk_id": "c-0", "start_line": 1, "end_line": 5 }),
             "rlm-mcp slice --session-id <id> --chunk-id c-0 --start 1 --end 5 --json",
+        ),
+        "rlm_transform" => (
+            "transform",
+            &["--session-id", "--op", "--chunk-id", "--artifact", "--content", "--params"],
+            "transformed content with operation metadata",
+            json!({ "session_id": "<session_id>", "operation": "dedupe_lines", "chunk_id": "c-0" }),
+            "rlm-mcp transform --session-id <id> --chunk-id c-0 --op dedupe_lines --json",
+        ),
+        "rlm_artifact_write" => (
+            "artifact-write",
+            &["--session-id", "--name", "--content", "--chunk-id"],
+            "artifact name, bytes, storage path",
+            json!({ "session_id": "<session_id>", "name": "summary.txt", "content": "findings" }),
+            "rlm-mcp artifact-write --session-id <id> --name summary.txt --content findings --json",
+        ),
+        "rlm_artifact_read" => (
+            "artifact-read",
+            &["--session-id", "--name", "--start", "--end"],
+            "artifact content (optional line slice)",
+            json!({ "session_id": "<session_id>", "name": "summary.txt" }),
+            "rlm-mcp artifact-read --session-id <id> --name summary.txt --json",
         ),
         "rlm_chunk" => (
             "chunk",

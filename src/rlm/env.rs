@@ -45,7 +45,7 @@ pub fn env_info(session: &ScanSession) -> Value {
         "created_at_unix": session.created_at_unix,
         "expires_at_unix": session.expires_at_unix,
         "files": file_list,
-        "hint": "Use rlm_peek to filter, rlm_chunk(chunk_ids) to read, rlm_slice for line ranges"
+        "hint": "Use rlm_peek to filter, rlm_chunk to read, rlm_slice for lines, rlm_transform for safe ops, rlm_artifact_* for derived state"
     })
 }
 

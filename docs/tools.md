@@ -2,7 +2,7 @@
 
 Machine-readable source of truth: call `rlm_tools_reference` (MCP) or `rlm-mcp tools-reference --json` (CLI).
 
-Contract snapshot: [`packaging/mcp/tools-list.snapshot.json`](../packaging/mcp/tools-list.snapshot.json) (28 tools).
+Contract snapshot: [`packaging/mcp/tools-list.snapshot.json`](../packaging/mcp/tools-list.snapshot.json) (31 tools).
 
 ## Conventions
 
@@ -100,6 +100,36 @@ Read a line range from one chunk (REPL-style slice).
 |--------------|----------|
 | `session_id` | `--session-id` |
 | `chunk_id` | `--chunk-id` |
+| `start_line` / `end_line` | `--start` / `--end` |
+
+### `rlm_transform`
+
+Safe deterministic text transforms (no code execution). See [`docs/repl-execution-model.md`](repl-execution-model.md).
+
+| MCP argument | CLI flag | Notes |
+|--------------|----------|-------|
+| `session_id` | `--session-id` | required |
+| `operation` | `--op` | required |
+| `params` | `--params` | JSON object |
+| `chunk_id` | `--chunk-id` | input source |
+| `artifact_name` | `--artifact` | input source |
+| `content` | `--content` | inline input |
+
+### `rlm_artifact_write`
+
+| MCP argument | CLI flag |
+|--------------|----------|
+| `session_id` | `--session-id` |
+| `name` | `--name` |
+| `content` | `--content` |
+| `source_chunk_id` | `--chunk-id` |
+
+### `rlm_artifact_read`
+
+| MCP argument | CLI flag |
+|--------------|----------|
+| `session_id` | `--session-id` |
+| `name` | `--name` |
 | `start_line` / `end_line` | `--start` / `--end` |
 
 ## Map phase
