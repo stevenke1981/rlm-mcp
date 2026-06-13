@@ -1,9 +1,12 @@
-use crate::mcp::tools::tool_definitions;
 use serde_json::{json, Value};
 
 /// Structured schema reference for agent integration (MCP + CLI).
 pub fn tools_reference() -> Value {
-    let mut entries: Vec<Value> = tool_definitions().iter().map(enrich_tool).collect();
+    let mut entries: Vec<Value> = crate::mcp::server::McpServer::rmcp_tool_definitions()
+        .into_iter()
+        .map(|tool| serde_json::to_value(tool).expect("rmcp tool definition must serialize"))
+        .map(|value| enrich_tool(&value))
+        .collect();
     entries.sort_by(|a, b| {
         a["name"]
             .as_str()
@@ -363,14 +366,14 @@ mod tests {
 
     #[test]
     fn reference_covers_every_defined_tool() {
-        let defs = tool_definitions();
+        let defs = crate::mcp::server::McpServer::rmcp_tool_definitions();
         let reference = tools_reference();
         assert_eq!(
             reference["tool_count"].as_u64().unwrap() as usize,
             defs.len()
         );
         for def in defs {
-            let name = def["name"].as_str().unwrap();
+            let name = def.name.as_ref();
             let found = reference["tools"]
                 .as_array()
                 .unwrap()

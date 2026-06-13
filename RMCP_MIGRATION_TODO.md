@@ -15,7 +15,15 @@
 Implementation snapshot (2026-06-13): official `rmcp` `ServerHandler`, stdio,
 capability negotiation, 33-tool listing/calling, domain error results, official
 client contract tests, and rebuilt release-binary handshake smoke are complete.
-Typed Schemars tool-family routing and MCP request cancellation remain open.
+
+Implementation snapshot (2026-06-13, next stage): all 33 RLM MCP tools are now
+registered through the official `#[tool_router]` / `#[tool_handler]` path with
+typed Schemars input structs and generated schemas. `rlm_tools_reference` and
+the packaging tool snapshot now read the generated router metadata instead of
+hand-written schema definitions. Router methods accept the SDK cancellation
+token and bound active tool calls when MCP `notifications/cancelled` arrives;
+subprocess/provider hard termination remains a follow-up for command/openai
+backends that block inside domain code.
 
 - [x] Use the current official stable SDK: `rmcp = 1.7.0`.
 - [x] Pin the SDK in `Cargo.lock`; update it only through a dedicated dependency change and protocol regression run.
@@ -99,20 +107,20 @@ Acceptance:
 
 ## P0 Task 3 - Define typed Schemars inputs by tool family
 
-- [ ] Create a typed input struct for every one of the 33 tools.
-- [ ] Derive `Debug`, `Clone`, `Deserialize`, and `JsonSchema`.
-- [ ] Model closed values with enums:
+- [x] Create a typed input struct for every one of the 33 tools.
+- [x] Derive `Debug`, `Clone`, `Deserialize`, and `JsonSchema`.
+- [x] Model closed values with enums:
   - benchmark suite and fixture size
   - budget mode
   - provider name
   - trajectory format
   - REPL backend
   - transform operation
-- [ ] Share nested types such as task budget without changing the JSON shape.
-- [ ] Encode defaults once so Serde runtime behavior and Schemars advertised values cannot diverge.
-- [ ] Preserve tools with empty object input rather than using null or an omitted schema.
-- [ ] Reject invalid types, unknown enum values, and missing required arguments as invalid params.
-- [ ] Add parameter tests for minimum valid, complete valid, invalid enum, missing required, and boundary numeric values.
+- [x] Share nested types such as task budget without changing the JSON shape.
+- [x] Encode defaults once so Serde runtime behavior and Schemars advertised values cannot diverge.
+- [x] Preserve tools with empty object input rather than using null or an omitted schema.
+- [x] Reject invalid types, unknown enum values, and missing required arguments as invalid params.
+- [ ] Add parameter tests for minimum valid, complete valid, invalid enum, missing required, and boundary numeric values. (Partial: invalid enum and end-to-end valid calls are covered; add focused missing-required and numeric-boundary tests next.)
 
 Acceptance:
 
@@ -121,18 +129,18 @@ Acceptance:
 
 ## P0 Task 4 - Build the typed rmcp router incrementally
 
-- [ ] Create `src/mcp/router.rs` with a `#[tool_router]` implementation.
-- [ ] Migrate tools in this order so every commit leaves a usable server:
-  1. workflow/reference/benchmark list tools
-  2. session lifecycle tools
-  3. peek/chunk/slice/transform/artifact tools
-  4. map/reduce coordination tools
-  5. recursive task and budget tools
-  6. trajectory, provider, REPL, and benchmark execution tools
-- [ ] Keep business logic in existing RLM modules and `ToolHandler`; router methods only validate, call, and convert results.
-- [ ] Centralize JSON text-content conversion to preserve current responses.
-- [ ] Prevent panics from escaping the tool boundary.
-- [ ] Make shared state concurrency explicit with `Arc` and existing per-session locking.
+- [x] Create a `#[tool_router]` implementation (implemented in `src/mcp/server.rs` to keep the server adapter compact).
+- [x] Migrate tools in this order so every commit leaves a usable server:
+  1. [x] workflow/reference/benchmark list tools
+  2. [x] session lifecycle tools
+  3. [x] peek/chunk/slice/transform/artifact tools
+  4. [x] map/reduce coordination tools
+  5. [x] recursive task and budget tools
+  6. [x] trajectory, provider, REPL, and benchmark execution tools
+- [x] Keep business logic in existing RLM modules and `ToolHandler`; router methods only validate, call, and convert results.
+- [x] Centralize JSON text-content conversion to preserve current responses.
+- [x] Prevent panics from escaping the tool boundary.
+- [x] Make shared state concurrency explicit with `Arc` and existing per-session locking.
 
 Acceptance:
 
@@ -196,13 +204,13 @@ Acceptance:
 
 ## P0 Task 8 - MCP cancellation and recursive task cancellation
 
-- [ ] Connect the SDK request cancellation signal to long-running scans, benchmark runs, provider calls, REPL commands, task creation, and reductions.
-- [ ] Keep `rlm_task_cancel` as the domain-level persistent task-tree cancellation API.
-- [ ] Define precedence: MCP request cancellation stops the active request; `rlm_task_cancel` marks the persistent task tree cancelled.
-- [ ] Ensure command providers and REPL subprocesses are terminated when cancellation is supported.
-- [ ] Do not persist a successful completion event after cancellation.
-- [ ] Record a redacted cancellation trajectory event when a session/task exists.
-- [ ] Add timeout-bounded tests using mock providers and a slow command fixture.
+- [x] Connect the SDK request cancellation signal to active router tool calls; deeper provider/REPL subprocess termination remains below.
+- [x] Keep `rlm_task_cancel` as the domain-level persistent task-tree cancellation API.
+- [x] Define precedence: MCP request cancellation stops the active request; `rlm_task_cancel` marks the persistent task tree cancelled.
+- [ ] Ensure command providers and REPL subprocesses are terminated when cancellation is supported. (Follow-up: router-level request cancellation is bounded; blocking subprocess termination still needs provider/REPL token plumbing.)
+- [ ] Do not persist a successful completion event after cancellation. (Follow-up for domain/provider cancellation paths.)
+- [ ] Record a redacted cancellation trajectory event when a session/task exists. (Follow-up for session/task-aware cancellation paths.)
+- [ ] Add timeout-bounded tests using mock providers and a slow command fixture. (Partial: official rmcp cancellable request path is covered; add slow command/provider fixture when provider/REPL token plumbing lands.)
 
 Acceptance:
 
@@ -227,8 +235,8 @@ Acceptance:
 
 - [ ] Delete `src/mcp/transport.rs` after Windows and Unix stdio tests pass.
 - [ ] Remove manual initialize, ping, tools/list, tools/call, response formatting, and JSON-RPC error formatting from `src/mcp/server.rs`.
-- [ ] Remove `tool_definitions()` and all hand-built input schema JSON from `src/mcp/tools.rs` after snapshot parity.
-- [ ] Keep `src/mcp/schema_docs.rs` only for human/agent documentation that is verified against generated contracts.
+- [x] Remove `tool_definitions()` and all hand-built input schema JSON from `src/mcp/tools.rs` after snapshot parity.
+- [x] Keep `src/mcp/schema_docs.rs` only for human/agent documentation that is verified against generated contracts.
 - [ ] Run `rg` for `Content-Length`, `protocolVersion`, `format_response`, `format_error`, and `tool_definitions`; remaining matches must be tests or migration documentation.
 
 Acceptance:
