@@ -19,6 +19,11 @@ pub fn run_cli(args: &[String]) -> Result<()> {
     }
 
     let command = args[0].as_str();
+    if matches!(command, "--version" | "-V" | "version") {
+        println!("rlm-mcp {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
     let flags = parse_flags(&args[1..]);
     let json_mode = flags.get_bool("json") || flags.get_bool("quiet");
     let engine = RlmEngine::new();

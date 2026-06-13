@@ -36,10 +36,33 @@ if (-not (Test-Path $Built)) {
     throw "Build failed: $Built not found"
 }
 
+function Install-BinaryWithLockedFallback {
+    param(
+        [Parameter(Mandatory=$true)][string]$Source,
+        [Parameter(Mandatory=$true)][string]$InstallDir,
+        [Parameter(Mandatory=$true)][string]$VersionNoV
+    )
+    $stable = Join-Path $InstallDir "rlm-mcp.exe"
+    $versioned = Join-Path $InstallDir "rlm-mcp-$VersionNoV.exe"
+    try {
+        Copy-Item -LiteralPath $Source -Destination $stable -Force -ErrorAction Stop
+        return $stable
+    } catch {
+        $message = $_.Exception.Message
+        if ($message -notmatch "being used by another process|cannot access the file|access.*denied") {
+            throw
+        }
+        Copy-Item -LiteralPath $Source -Destination $versioned -Force -ErrorAction Stop
+        Write-Warning "Stable binary is locked; installed side-by-side: $versioned"
+        return $versioned
+    }
+}
+
 New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
-Copy-Item $Built (Join-Path $BinDir "rlm-mcp.exe") -Force
-Write-Host "  ✓ Binary → $BinDir\rlm-mcp.exe" -ForegroundColor Green
-$InstalledBinary = Join-Path $BinDir "rlm-mcp.exe"
+$CargoToml = Get-Content -Raw (Join-Path $ScriptDir "Cargo.toml")
+$CargoVersion = if ($CargoToml -match '(?m)^version\s*=\s*"([^"]+)"') { $Matches[1] } else { "dev" }
+$InstalledBinary = Install-BinaryWithLockedFallback -Source $Built -InstallDir $BinDir -VersionNoV $CargoVersion
+Write-Host "  ✓ Binary → $InstalledBinary" -ForegroundColor Green
 & $InstalledBinary install --json
 if ($LASTEXITCODE -ne 0) { throw "rlm-mcp agent configuration failed" }
 
@@ -58,7 +81,7 @@ Install-Skill (Join-Path $userHome ".agents\skills\$SkillName") "OpenCode / Code
 Install-Skill (Join-Path $userHome ".config\opencode\skills\$SkillName") "OpenCode native"
 
 Write-Host ""
-Write-Host "Binary installed: $BinDir\rlm-mcp.exe" -ForegroundColor Green
+Write-Host "Binary installed: $InstalledBinary" -ForegroundColor Green
 Write-Host ""
 Write-Host "OpenCode and Codex MCP configured automatically." -ForegroundColor DarkGray
 Write-Host ('  command: ["{0}"]' -f $InstalledBinary) -ForegroundColor DarkGray

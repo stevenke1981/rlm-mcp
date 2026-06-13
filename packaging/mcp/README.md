@@ -30,6 +30,10 @@ cargo test write_tools_snapshot -- --ignored
 
 The checkout installer downloads the latest GitHub Release binary, verifies checksums, copies the binary to `~/.config/rlm-mcp/bin/`, registers OpenCode and Codex, and installs the `rlm` skill. It does not compile Rust. Restart the agent or open a new session to load the tools. Use `.\install.ps1 -FromSource` or `./install.sh --from-source` only for local unreleased development.
 
+Agents should follow `manifest.json` installer URLs or run `.\install.ps1`. The package manifest intentionally does not advertise `target/release` paths, because those are local build outputs and cause unnecessary compilation.
+
+On Windows, if `rlm-mcp.exe` is locked by a running agent, the installer writes a side-by-side `rlm-mcp-<version>.exe` and configures OpenCode/Codex to launch that unlocked binary.
+
 ## Manual config
 
 | Template | Target |

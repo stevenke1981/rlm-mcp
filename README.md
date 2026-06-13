@@ -24,6 +24,8 @@ rlm-mcp --version
 
 `install.ps1` / `install.sh` download the latest GitHub Release binary by default. Agents can install directly from a checkout without compiling Rust.
 
+For agents and automation: run `.\install.ps1` from the checkout, or run the raw release installer URL below. Do not compile or use `target/release` unless you explicitly pass `-FromSource`.
+
 ## Install
 
 ### From GitHub Release
@@ -47,6 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging
 ```
 
 The release installer verifies `SHA256SUMS.txt`, installs the binary to a stable path, and registers both OpenCode and Codex MCP entries automatically.
+On Windows, if the stable binary is currently locked by a running agent, the installer installs a versioned side-by-side binary and configures agents to use that path.
 
 ### From checkout without compiling
 
@@ -70,11 +73,11 @@ Installs to `~/.config/rlm-mcp/bin/rlm-mcp` and symlinks `~/.local/bin/rlm-mcp`.
 Pin a version:
 
 ```powershell
-.\install.ps1 -Version v0.1.4
+.\install.ps1 -Version v0.1.5
 ```
 
 ```bash
-RLM_VERSION=v0.1.4 ./install.sh
+RLM_VERSION=v0.1.5 ./install.sh
 ```
 
 ### Build from source checkout
@@ -237,11 +240,13 @@ project's RLM implementation.
 | Symptom | Fix |
 |---------|-----|
 | `rlm-mcp` not found in agent | Use absolute path from install output; avoid bare `rlm-mcp` unless `~/.local/bin` is on `PATH` |
+| OpenCode shows no `rlm-mcp` connection after install | Re-run `.\install.ps1`; then restart OpenCode or open a new session because MCP servers are loaded at session start |
 | MCP server exits immediately | Run without subcommand for stdio MCP; use `rlm-mcp workflow --json` to verify CLI |
 | `tools/list` test fails after adding tools | `cargo test write_tools_snapshot -- --ignored` then commit snapshot |
 | Session not found across processes | Same `RLM_CACHE_DIR`; use `rlm_session_list --json` |
 | Permission denied on cache dir | Set `RLM_CACHE_DIR` to a writable directory |
 | Windows build slow | Default install does not build; use `.\install.ps1` for release binary or `.\install.ps1 -FromSource -SkipBuild` after a local dev build |
+| Windows says `rlm-mcp.exe` is being used by another process | Re-run the current installer; it falls back to `%USERPROFILE%\.config\rlm-mcp\bin\rlm-mcp-<version>.exe` and updates agent config |
 | Release smoke skipped | Run `cargo build --release` then `cargo test --test release_smoke --release` |
 
 ## Implementation roadmap

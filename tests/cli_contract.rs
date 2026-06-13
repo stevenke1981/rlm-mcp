@@ -46,6 +46,21 @@ fn cli_workflow_json_contract() {
 }
 
 #[test]
+fn cli_version_flag_prints_package_version() {
+    let output = Command::new(bin())
+        .arg("--version")
+        .output()
+        .expect("spawn rlm-mcp --version");
+    assert!(
+        output.status.success(),
+        "stderr={}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).expect("utf8 stdout");
+    assert!(stdout.contains(env!("CARGO_PKG_VERSION")));
+}
+
+#[test]
 fn cli_reduce_schema_json_contract() {
     let value = run_json(&["reduce-schema", "--json"]);
     assert!(value.get("worker_schema").is_some() || value.get("checklist").is_some());

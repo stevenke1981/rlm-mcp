@@ -2,7 +2,7 @@
   "schema_version": "0.1",
   "name": "rlm-mcp",
   "display_name": "rlm-mcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "transport": "stdio",
   "command": "rlm-mcp",
   "args": [],
@@ -48,8 +48,11 @@
     "rlm_workflow"
   ],
   "install": {
-    "windows_binary": "target/release/rlm-mcp.exe",
-    "unix_binary": "target/release/rlm-mcp",
+    "windows_installer_url": "https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/windows/install.ps1",
+    "linux_installer_url": "https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/linux/install.sh",
+    "macos_installer_url": "https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/macos/install.sh",
+    "stable_windows_binary": "%USERPROFILE%/.config/rlm-mcp/bin/rlm-mcp.exe",
+    "stable_unix_binary": "~/.config/rlm-mcp/bin/rlm-mcp",
     "recommended_command": "./install.ps1",
     "manual_templates": [
       "packaging/mcp/generic-mcp.json",
