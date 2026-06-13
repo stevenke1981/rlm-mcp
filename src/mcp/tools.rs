@@ -3,6 +3,7 @@ use crate::rlm::{BudgetMode, PeekOptions, RlmEngine, SessionBudget, TaskBudget};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct ToolHandler {
     rlm: Arc<RlmEngine>,
 }

@@ -157,23 +157,26 @@ fn release_binary_mcp_stdio_initialize_and_tools_list() {
         .spawn()
         .expect("spawn mcp server");
 
-    {
-        let stdin = child.stdin.as_mut().expect("stdin");
-        write_mcp_frame(
-            stdin,
-            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
-        );
-        write_mcp_frame(
-            stdin,
-            r#"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#,
-        );
-    }
+    let stdin = child.stdin.as_mut().expect("stdin");
+    write_mcp_frame(
+        stdin,
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"release-smoke","version":"1"}}}"#,
+    );
 
     let stdout = child.stdout.take().expect("stdout");
     let mut reader = std::io::BufReader::new(stdout);
     let init_body = read_mcp_frame(&mut reader);
     let init: Value = serde_json::from_str(&init_body).unwrap();
     assert_eq!(init["result"]["serverInfo"]["name"], "rlm-mcp");
+
+    write_mcp_frame(
+        stdin,
+        r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#,
+    );
+    write_mcp_frame(
+        stdin,
+        r#"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#,
+    );
 
     let list_body = read_mcp_frame(&mut reader);
     let list: Value = serde_json::from_str(&list_body).unwrap();

@@ -1,11 +1,17 @@
-use crate::error::{Error, Result};
+use crate::error::{Error, Result as RlmResult};
 use crate::mcp::tools::{tool_definitions, ToolHandler};
-use crate::mcp::transport::{read_stdin_message, write_stdout_message};
-use serde_json::{json, Value};
+use rmcp::model::{
+    CallToolRequestParams, CallToolResult, Content, Implementation, ListToolsResult,
+    PaginatedRequestParams, ServerCapabilities, ServerInfo, Tool,
+};
+use rmcp::service::{MaybeSendFuture, RequestContext};
+use rmcp::{ErrorData, RoleServer, ServerHandler, ServiceExt};
+use serde_json::Value;
 
 pub const SERVER_NAME: &str = "rlm-mcp";
 pub const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[derive(Clone)]
 pub struct McpServer {
     handler: ToolHandler,
 }
@@ -17,133 +23,88 @@ impl McpServer {
         }
     }
 
-    pub fn run(&self) -> Result<()> {
-        while let Some(line) = read_stdin_message()? {
-            let response = self.handle_message(&line)?;
-            if let Some(body) = response {
-                write_stdout_message(&body)?;
-            }
-        }
-        Ok(())
+    pub async fn serve_stdio(self) -> RlmResult<()> {
+        self.serve(rmcp::transport::stdio())
+            .await
+            .map_err(|error| Error::Other(format!("failed to start MCP stdio service: {error}")))?
+            .waiting()
+            .await
+            .map(|_| ())
+            .map_err(|error| Error::Other(format!("MCP stdio service failed: {error}")))
     }
 
-    pub fn handle_message(&self, raw: &str) -> Result<Option<String>> {
-        let request: Value = serde_json::from_str(raw)?;
-        let id = request.get("id").cloned();
-        let method = request.get("method").and_then(|m| m.as_str()).unwrap_or("");
+    pub fn rmcp_tool_definitions() -> Vec<Tool> {
+        tool_definitions()
+            .into_iter()
+            .map(|definition| {
+                serde_json::from_value(definition).expect("RLM MCP tool definition must be valid")
+            })
+            .collect()
+    }
+}
 
-        let result = match method {
-            "initialize" => Ok(self.handle_initialize()),
-            "notifications/initialized" | "initialized" => return Ok(None),
-            "ping" => Ok(json!({})),
-            "tools/list" => Ok(json!({ "tools": tool_definitions() })),
-            "tools/call" => self.handle_tool_call(&request),
-            _ => {
-                if id.is_none() {
-                    return Ok(None);
-                }
-                Err(Error::InvalidArgument(format!("unknown method: {method}")))
-            }
-        };
-
-        match (id, result) {
-            (None, _) => Ok(None),
-            (Some(id), Ok(value)) => Ok(Some(format_response(id, value)?)),
-            (Some(id), Err(e)) => Ok(Some(format_error(id, -32603, &e.to_string())?)),
-        }
+impl ServerHandler for McpServer {
+    fn get_info(&self) -> ServerInfo {
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(Implementation::new(SERVER_NAME, SERVER_VERSION))
+            .with_instructions(
+                "Standalone RLM MCP server. Load external context with rlm_scan, then filter with rlm_peek, map with rlm_chunk/map tools, reduce, and recurse when evidence is incomplete. Independent of any graph index.",
+            )
     }
 
-    fn handle_initialize(&self) -> Value {
-        json!({
-            "protocolVersion": "2024-11-05",
-            "capabilities": {
-                "tools": { "listChanged": false }
-            },
-            "serverInfo": {
-                "name": SERVER_NAME,
-                "version": SERVER_VERSION
-            },
-            "instructions": "Standalone RLM MCP server. External context via rlm_scan sessions. Loop: load → filter (rlm_peek) → map (rlm_chunk) → reduce. Independent of any graph index."
-        })
-    }
-
-    fn handle_tool_call(&self, request: &Value) -> Result<Value> {
-        let params = request
-            .get("params")
-            .ok_or_else(|| Error::InvalidArgument("missing params".into()))?;
-        let name = params
-            .get("name")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::InvalidArgument("missing tool name".into()))?;
-        let args = params.get("arguments").cloned().unwrap_or(json!({}));
-        let result = self.handler.handle(name, &args)?;
-        Ok(json!({
-            "content": [{
-                "type": "text",
-                "text": serde_json::to_string_pretty(&result)?
-            }],
-            "isError": false
+    fn list_tools(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> impl std::future::Future<Output = std::result::Result<ListToolsResult, ErrorData>>
+           + MaybeSendFuture
+           + '_ {
+        std::future::ready(Ok(ListToolsResult {
+            tools: Self::rmcp_tool_definitions(),
+            ..Default::default()
         }))
     }
+
+    fn get_tool(&self, name: &str) -> Option<Tool> {
+        Self::rmcp_tool_definitions()
+            .into_iter()
+            .find(|tool| tool.name == name)
+    }
+
+    fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> impl std::future::Future<Output = std::result::Result<CallToolResult, ErrorData>>
+           + MaybeSendFuture
+           + '_ {
+        let handler = self.handler.clone();
+        async move {
+            let name = request.name.into_owned();
+            let arguments = Value::Object(request.arguments.unwrap_or_default());
+            let result =
+                tokio::task::spawn_blocking(move || handler.handle(&name, &arguments)).await;
+            Ok(match result {
+                Ok(Ok(value)) => match serde_json::to_string_pretty(&value) {
+                    Ok(text) => CallToolResult::success(vec![Content::text(text)]),
+                    Err(error) => tool_error(format!("failed to encode tool result: {error}")),
+                },
+                Ok(Err(error)) => tool_error(error.to_string()),
+                Err(error) => {
+                    tracing::error!(%error, "RLM tool worker failed");
+                    tool_error("internal tool worker failure")
+                }
+            })
+        }
+    }
+}
+
+fn tool_error(message: impl Into<String>) -> CallToolResult {
+    CallToolResult::error(vec![Content::text(message.into())])
 }
 
 impl Default for McpServer {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-fn format_response(id: Value, result: Value) -> Result<String> {
-    Ok(serde_json::to_string(&json!({
-        "jsonrpc": "2.0",
-        "id": id,
-        "result": result
-    }))?)
-}
-
-fn format_error(id: Value, code: i32, message: &str) -> Result<String> {
-    Ok(serde_json::to_string(&json!({
-        "jsonrpc": "2.0",
-        "id": id,
-        "error": { "code": code, "message": message }
-    }))?)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn handles_initialize() {
-        let server = McpServer::new();
-        let req = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {}
-        });
-        let resp = server.handle_message(&req.to_string()).unwrap().unwrap();
-        assert!(resp.contains("rlm-mcp"));
-    }
-
-    #[test]
-    fn lists_rlm_tools() {
-        let server = McpServer::new();
-        let req = json!({
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "tools/list",
-            "params": {}
-        });
-        let resp = server.handle_message(&req.to_string()).unwrap().unwrap();
-        assert!(resp.contains("rlm_workflow"));
-        assert!(resp.contains("rlm_scan"));
-        assert!(resp.contains("rlm_env_info"));
-        assert!(resp.contains("rlm_map_plan"));
-        assert!(resp.contains("rlm_reduce_merge"));
-        assert!(resp.contains("rlm_task_create"));
-        assert!(resp.contains("rlm_trajectory_get"));
-        assert!(!resp.contains("rlm_filter"));
-        assert!(!resp.contains("index_repository"));
     }
 }

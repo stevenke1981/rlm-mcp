@@ -108,6 +108,12 @@ Replace `command` with the absolute path from `install.ps1` / `install.sh`, or u
 
 The installer updates both existing `opencode.json` and `opencode.jsonc` files and `%USERPROFILE%\.codex\config.toml`. Restart the agent or open a new session after installation because MCP tools are loaded when a session starts.
 
+The MCP protocol boundary uses the official Rust SDK, `rmcp 1.7.0`, for stdio
+framing, protocol negotiation, capabilities, request IDs, and error envelopes.
+The 33-tool contract remains locked by
+[`packaging/mcp/tools-list.snapshot.json`](packaging/mcp/tools-list.snapshot.json).
+Stdout is protocol-only in MCP mode; diagnostics are written to stderr.
+
 **Stable binary path:**
 
 | OS | Path |
@@ -214,6 +220,10 @@ rlm-mcp
     ↓ local sessions (RLM_CACHE_DIR/rlm-sessions)
 External files / logs / docs / text blobs
 ```
+
+`rmcp` implements the MCP transport boundary. The external-context, filter,
+map, reduce, recursion, provider, budget, and trajectory behavior remains this
+project's RLM implementation.
 
 ## Related projects
 

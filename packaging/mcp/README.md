@@ -6,6 +6,10 @@ Server name: `rlm-mcp`
 Transport: stdio  
 Binary: `rlm-mcp` or absolute path to release binary
 
+Protocol negotiation, capabilities, JSON-RPC envelopes, and stdio transport
+are provided by the official Rust MCP SDK (`rmcp 1.7.0`). Stdout is reserved
+for MCP frames; logs go to stderr.
+
 ## Contract snapshot
 
 `tools-list.snapshot.json` is the canonical `tools/list` contract (33 tools).

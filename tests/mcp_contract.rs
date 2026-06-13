@@ -1,15 +1,29 @@
 use rlm_mcp::mcp::server::McpServer;
 use rlm_mcp::mcp::tools::normalized_tools_snapshot;
-use serde_json::{json, Value};
+use rlm_mcp::{test_lock, McpServer as PublicMcpServer};
+use rmcp::model::CallToolRequestParams;
+use rmcp::{ServerHandler, ServiceExt};
+use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 fn snapshot_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("packaging/mcp/tools-list.snapshot.json")
 }
 
-fn parse_response(body: &str) -> Value {
-    serde_json::from_str(body).expect("valid json-rpc response")
+fn arguments(value: Value) -> Map<String, Value> {
+    value.as_object().cloned().expect("tool arguments object")
+}
+
+fn text_json(result: &rmcp::model::CallToolResult) -> Value {
+    let text = result.content[0]
+        .raw
+        .as_text()
+        .expect("text tool result")
+        .text
+        .as_str();
+    serde_json::from_str(text).expect("JSON tool result")
 }
 
 #[test]
@@ -33,134 +47,95 @@ fn write_tools_snapshot() {
 
 #[test]
 fn mcp_initialize_returns_server_info() {
-    let server = McpServer::new();
-    let req = json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-        "params": {}
-    });
-    let body = server
-        .handle_message(&req.to_string())
-        .unwrap()
-        .expect("response");
-    let resp = parse_response(&body);
-    assert_eq!(resp["result"]["serverInfo"]["name"], "rlm-mcp");
+    let info = ServerHandler::get_info(&McpServer::new());
+    assert_eq!(info.server_info.name, "rlm-mcp");
+    assert!(info.capabilities.tools.is_some());
+    assert!(info.capabilities.resources.is_none());
 }
 
-#[test]
-fn mcp_tools_list_matches_snapshot_tools() {
-    let server = McpServer::new();
-    let req = json!({
-        "jsonrpc": "2.0",
-        "id": 2,
-        "method": "tools/list",
-        "params": {}
+#[tokio::test]
+async fn official_rmcp_client_preserves_tool_contract_and_rlm_loop() {
+    let guard = test_lock::acquire();
+    let cache = TempDir::new().unwrap();
+    std::env::set_var("RLM_CACHE_DIR", cache.path());
+    let server = PublicMcpServer::new();
+    drop(guard);
+
+    let (server_transport, client_transport) = tokio::io::duplex(1024 * 1024);
+    let server_task = tokio::spawn(async move {
+        server
+            .serve(server_transport)
+            .await
+            .expect("start rmcp server")
+            .waiting()
+            .await
+            .expect("wait rmcp server");
     });
-    let body = server
-        .handle_message(&req.to_string())
-        .unwrap()
-        .expect("response");
-    let resp = parse_response(&body);
-    let listed = &resp["result"]["tools"];
+    let client = ().serve(client_transport).await.expect("start rmcp client");
+
+    let tools = client.list_all_tools().await.expect("list tools");
     assert_eq!(
-        listed.as_array().unwrap().len(),
+        tools.len(),
         normalized_tools_snapshot()["tool_count"].as_u64().unwrap() as usize
     );
-}
+    assert!(tools.iter().any(|tool| tool.name == "rlm_workflow"));
+    assert!(!tools.iter().any(|tool| tool.name == "index_repository"));
 
-#[test]
-fn mcp_tools_reference_covers_all_tools() {
-    let server = McpServer::new();
-    let req = json!({
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "tools/call",
-        "params": {
-            "name": "rlm_tools_reference",
-            "arguments": {}
-        }
-    });
-    let body = server
-        .handle_message(&req.to_string())
-        .unwrap()
-        .expect("reference response");
-    let resp = parse_response(&body);
-    let text = resp["result"]["content"][0]["text"].as_str().unwrap();
-    let reference: Value = serde_json::from_str(text).unwrap();
+    let reference = client
+        .call_tool(CallToolRequestParams::new("rlm_tools_reference"))
+        .await
+        .expect("tools reference");
     assert_eq!(
-        reference["tool_count"].as_u64().unwrap(),
-        normalized_tools_snapshot()["tool_count"].as_u64().unwrap()
+        text_json(&reference)["tool_count"].as_u64().unwrap(),
+        tools.len() as u64
     );
-}
 
-#[test]
-fn mcp_scan_peek_chunk_smoke() {
-    let server = McpServer::new();
-
-    let scan_req = json!({
-        "jsonrpc": "2.0",
-        "id": 10,
-        "method": "tools/call",
-        "params": {
-            "name": "rlm_scan",
-            "arguments": {
+    let scan = client
+        .call_tool(
+            CallToolRequestParams::new("rlm_scan").with_arguments(arguments(json!({
                 "content": "alpha line\nNEEDLE=42\nomega line\n",
                 "virtual_path": "contract/smoke.txt"
-            }
-        }
-    });
-    let scan_body = server
-        .handle_message(&scan_req.to_string())
-        .unwrap()
-        .expect("scan response");
-    let scan_resp = parse_response(&scan_body);
-    let scan_text = scan_resp["result"]["content"][0]["text"]
-        .as_str()
-        .expect("scan text");
-    let scan_json: Value = serde_json::from_str(scan_text).unwrap();
-    let session_id = scan_json["session_id"].as_str().unwrap();
+            }))),
+        )
+        .await
+        .expect("scan");
+    assert_eq!(scan.is_error, Some(false));
+    let session_id = text_json(&scan)["session_id"].as_str().unwrap().to_string();
 
-    let peek_req = json!({
-        "jsonrpc": "2.0",
-        "id": 11,
-        "method": "tools/call",
-        "params": {
-            "name": "rlm_peek",
-            "arguments": {
+    let peek = client
+        .call_tool(
+            CallToolRequestParams::new("rlm_peek").with_arguments(arguments(json!({
                 "session_id": session_id,
                 "query": "NEEDLE"
-            }
-        }
-    });
-    let peek_body = server
-        .handle_message(&peek_req.to_string())
-        .unwrap()
-        .expect("peek response");
-    let peek_resp = parse_response(&peek_body);
-    let peek_text = peek_resp["result"]["content"][0]["text"].as_str().unwrap();
-    let peek_json: Value = serde_json::from_str(peek_text).unwrap();
-    assert!(peek_json["total_match_lines"].as_u64().unwrap() >= 1);
+            }))),
+        )
+        .await
+        .expect("peek");
+    assert!(text_json(&peek)["total_match_lines"].as_u64().unwrap() >= 1);
 
-    let chunk_req = json!({
-        "jsonrpc": "2.0",
-        "id": 12,
-        "method": "tools/call",
-        "params": {
-            "name": "rlm_chunk",
-            "arguments": {
+    let chunk = client
+        .call_tool(
+            CallToolRequestParams::new("rlm_chunk").with_arguments(arguments(json!({
                 "session_id": session_id,
                 "offset": 0,
                 "limit": 1
-            }
-        }
-    });
-    let chunk_body = server
-        .handle_message(&chunk_req.to_string())
-        .unwrap()
-        .expect("chunk response");
-    let chunk_resp = parse_response(&chunk_body);
-    let chunk_text = chunk_resp["result"]["content"][0]["text"].as_str().unwrap();
-    let chunk_json: Value = serde_json::from_str(chunk_text).unwrap();
-    assert_eq!(chunk_json["chunks"].as_array().unwrap().len(), 1);
+            }))),
+        )
+        .await
+        .expect("chunk");
+    assert_eq!(text_json(&chunk)["chunks"].as_array().unwrap().len(), 1);
+
+    let missing_session = client
+        .call_tool(
+            CallToolRequestParams::new("rlm_peek").with_arguments(arguments(json!({
+                "session_id": "missing-session",
+                "query": "NEEDLE"
+            }))),
+        )
+        .await
+        .expect("domain errors stay inside tool results");
+    assert_eq!(missing_session.is_error, Some(true));
+
+    client.cancel().await.expect("cancel client");
+    server_task.await.expect("join server task");
 }

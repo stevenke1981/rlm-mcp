@@ -1,5 +1,7 @@
 # TODO - rlm-mcp full RLM paper implementation
 
+Official Rust MCP SDK migration plan: [`RMCP_MIGRATION_TODO.md`](RMCP_MIGRATION_TODO.md).
+
 Goal: make `D:\rlm-mcp` an independent Rust MCP project that faithfully presents the Recursive Language Models paper as a usable agent runtime.
 
 Reference sources:

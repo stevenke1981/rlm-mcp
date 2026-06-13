@@ -1,7 +1,8 @@
 use rlm_mcp::{cli, McpServer};
 use tracing_subscriber::EnvFilter;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if !args.is_empty() {
         if let Err(e) = cli::run_cli(&args) {
@@ -18,7 +19,7 @@ fn main() {
         .with_writer(std::io::stderr)
         .init();
 
-    if let Err(e) = McpServer::new().run() {
+    if let Err(e) = McpServer::new().serve_stdio().await {
         eprintln!("error: {e}");
         std::process::exit(1);
     }
