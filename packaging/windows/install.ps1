@@ -2,7 +2,7 @@
 #
 # Usage:
 #   irm https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/windows/install.ps1 | iex
-#   $env:RLM_VERSION = "v0.1.5"; .\packaging\windows\install.ps1
+#   $env:RLM_VERSION = "v0.1.6"; .\packaging\windows\install.ps1
 
 param(
     [string]$Version = $(if ($env:RLM_VERSION) { $env:RLM_VERSION } else { "latest" }),

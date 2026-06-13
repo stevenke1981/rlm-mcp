@@ -335,7 +335,7 @@
           "batch_id": {
             "type": "string"
           },
-          "output": true,
+          "output": {},
           "plan_id": {
             "type": "string"
           },
@@ -478,7 +478,7 @@
         "properties": {
           "worker_outputs": {
             "default": [],
-            "items": true,
+            "items": {},
             "type": "array"
           }
         },
@@ -631,7 +631,7 @@
             "default": false,
             "type": "boolean"
           },
-          "session": true
+          "session": {}
         },
         "required": [
           "session"
@@ -1028,5 +1028,5 @@
       "name": "rlm_workflow"
     }
   ],
-  "version": "0.1.5"
+  "version": "0.1.6"
 }

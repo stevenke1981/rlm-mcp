@@ -39,6 +39,87 @@ fn tools_list_matches_snapshot() {
 }
 
 #[test]
+fn tools_list_schemas_do_not_expose_boolean_schema_nodes() {
+    let current = normalized_tools_snapshot();
+    for tool in current["tools"].as_array().expect("tools array") {
+        let name = tool["name"].as_str().expect("tool name");
+        let schema = &tool["inputSchema"];
+        assert_no_boolean_schema_nodes(schema, &format!("{name}.inputSchema"), true);
+    }
+    assert_eq!(
+        current["tools"][9]["inputSchema"]["properties"]["output"],
+        json!({}),
+        "rlm_map_complete output should be an object schema, not boolean true"
+    );
+    assert_eq!(
+        current["tools"][20]["inputSchema"]["properties"]["session"],
+        json!({}),
+        "rlm_session_import session should be an object schema, not boolean true"
+    );
+}
+
+fn assert_no_boolean_schema_nodes(value: &Value, path: &str, is_schema_node: bool) {
+    match value {
+        Value::Bool(_) if is_schema_node => panic!("boolean JSON Schema node leaked at {path}"),
+        Value::Bool(_) => {}
+        Value::Array(items) if matches_schema_array(path) => {
+            for (index, item) in items.iter().enumerate() {
+                assert_no_boolean_schema_nodes(item, &format!("{path}[{index}]"), true);
+            }
+        }
+        Value::Array(_) => {}
+        Value::Object(object) => {
+            for (key, child) in object {
+                let child_path = format!("{path}.{key}");
+                let child_is_schema_node = matches_schema_child_key(key);
+                if matches_schema_map_key(key) {
+                    if let Value::Object(children) = child {
+                        for (nested_key, nested_child) in children {
+                            assert_no_boolean_schema_nodes(
+                                nested_child,
+                                &format!("{child_path}.{nested_key}"),
+                                true,
+                            );
+                        }
+                    }
+                } else {
+                    assert_no_boolean_schema_nodes(child, &child_path, child_is_schema_node);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn matches_schema_map_key(key: &str) -> bool {
+    matches!(
+        key,
+        "properties" | "patternProperties" | "$defs" | "definitions"
+    )
+}
+
+fn matches_schema_child_key(key: &str) -> bool {
+    matches!(
+        key,
+        "items"
+            | "additionalProperties"
+            | "contains"
+            | "not"
+            | "if"
+            | "then"
+            | "else"
+            | "propertyNames"
+    )
+}
+
+fn matches_schema_array(path: &str) -> bool {
+    path.ends_with(".allOf")
+        || path.ends_with(".anyOf")
+        || path.ends_with(".oneOf")
+        || path.ends_with(".prefixItems")
+}
+
+#[test]
 #[ignore = "run manually: cargo test write_tools_snapshot -- --ignored"]
 fn write_tools_snapshot() {
     let content = serde_json::to_string_pretty(&normalized_tools_snapshot()).unwrap();
