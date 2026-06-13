@@ -41,7 +41,7 @@ Copy-Item $Built (Join-Path $BinDir "rlm-mcp.exe") -Force
 Write-Host "  ✓ Binary → $BinDir\rlm-mcp.exe" -ForegroundColor Green
 $InstalledBinary = Join-Path $BinDir "rlm-mcp.exe"
 & $InstalledBinary install --json
-if ($LASTEXITCODE -ne 0) { throw "rlm-mcp OpenCode configuration failed" }
+if ($LASTEXITCODE -ne 0) { throw "rlm-mcp agent configuration failed" }
 
 function Install-Skill {
     param([string]$TargetDir, [string]$Label)
@@ -60,7 +60,7 @@ Install-Skill (Join-Path $userHome ".config\opencode\skills\$SkillName") "OpenCo
 Write-Host ""
 Write-Host "Binary installed: $BinDir\rlm-mcp.exe" -ForegroundColor Green
 Write-Host ""
-Write-Host "OpenCode MCP configured automatically." -ForegroundColor DarkGray
+Write-Host "OpenCode and Codex MCP configured automatically." -ForegroundColor DarkGray
 Write-Host ('  command: ["{0}"]' -f $InstalledBinary) -ForegroundColor DarkGray
 Write-Host "  server name: rlm-mcp" -ForegroundColor DarkGray
 Write-Host "Standalone RLM — no CBM dependency. Optional dual setup: cbm-mcp/packaging/mcp/dual-servers.example.json" -ForegroundColor DarkGray

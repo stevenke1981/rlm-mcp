@@ -2,7 +2,7 @@
   "schema_version": "0.1",
   "name": "rlm-mcp",
   "display_name": "rlm-mcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "transport": "stdio",
   "command": "rlm-mcp",
   "args": [],

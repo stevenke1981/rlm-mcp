@@ -6,6 +6,12 @@ use std::path::{Path, PathBuf};
 const SERVER_NAME: &str = "rlm-mcp";
 const LEGACY_SERVER_NAMES: &[&str] = &["codebase-memory-rlm-mcp"];
 
+pub fn configure_agents(binary: &Path) -> Result<Vec<PathBuf>> {
+    let mut configured = configure_opencode(binary)?;
+    configured.push(configure_codex(binary)?);
+    Ok(configured)
+}
+
 pub fn configure_opencode(binary: &Path) -> Result<Vec<PathBuf>> {
     if let Ok(path) = std::env::var("OPENCODE_CONFIG") {
         let trimmed = path.trim();
@@ -46,6 +52,92 @@ fn opencode_config_dir() -> Result<PathBuf> {
     dirs::home_dir()
         .map(|home| home.join(".config").join("opencode"))
         .ok_or_else(|| Error::Other("home directory not found".into()))
+}
+
+fn codex_config_path() -> Result<PathBuf> {
+    if let Ok(path) = std::env::var("CODEX_HOME") {
+        let trimmed = path.trim();
+        if !trimmed.is_empty() {
+            return Ok(PathBuf::from(trimmed).join("config.toml"));
+        }
+    }
+    dirs::home_dir()
+        .map(|home| home.join(".codex").join("config.toml"))
+        .ok_or_else(|| Error::Other("home directory not found".into()))
+}
+
+pub fn configure_codex(binary: &Path) -> Result<PathBuf> {
+    let path = codex_config_path()?;
+    write_codex_config(&path, binary)?;
+    Ok(path)
+}
+
+fn remove_codex_mcp_section(content: &str, server: &str) -> String {
+    let header = format!("[mcp_servers.{server}]");
+    let env_header = format!("[mcp_servers.{server}.env]");
+    let lines: Vec<&str> = content.lines().collect();
+    let mut remove = vec![false; lines.len()];
+
+    for (idx, line) in lines.iter().enumerate() {
+        if line.trim() != header {
+            continue;
+        }
+        let mut end = idx + 1;
+        while end < lines.len() && !lines[end].trim().starts_with('[') {
+            end += 1;
+        }
+        if end < lines.len() && lines[end].trim() == env_header {
+            end += 1;
+            while end < lines.len() && !lines[end].trim().starts_with('[') {
+                end += 1;
+            }
+        }
+        for slot in &mut remove[idx..end] {
+            *slot = true;
+        }
+    }
+
+    let mut result = lines
+        .iter()
+        .zip(remove.iter())
+        .filter_map(|(line, drop)| if *drop { None } else { Some(*line) })
+        .collect::<Vec<_>>()
+        .join("\n");
+    if content.ends_with('\n') && !result.is_empty() {
+        result.push('\n');
+    }
+    result
+}
+
+fn write_codex_config(path: &Path, binary: &Path) -> Result<()> {
+    let content = if path.exists() {
+        fs::read_to_string(path)?
+    } else {
+        String::new()
+    };
+    let mut content = remove_codex_mcp_section(&content, SERVER_NAME);
+    for legacy in LEGACY_SERVER_NAMES {
+        content = remove_codex_mcp_section(&content, legacy);
+    }
+    while content.ends_with("\n\n") {
+        content.pop();
+    }
+    if !content.is_empty() && !content.ends_with('\n') {
+        content.push('\n');
+    }
+    let binary = binary
+        .to_string_lossy()
+        .replace('\\', "/")
+        .replace('"', "\\\"");
+    content.push_str(&format!(
+        "\n[mcp_servers.{SERVER_NAME}]\ncommand = \"{binary}\"\nargs = []\n"
+    ));
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, content)?;
+    Ok(())
 }
 
 fn write_opencode_config(path: &Path, binary: &Path) -> Result<()> {
@@ -216,5 +308,39 @@ mod tests {
             parsed["mcp"]["rlm-mcp"]["command"][0].as_str(),
             Some(binary.to_string_lossy().as_ref())
         );
+    }
+
+    #[test]
+    fn writes_codex_entry_and_preserves_existing_settings() {
+        let dir = TempDir::new().unwrap();
+        let config = dir.path().join("config.toml");
+        fs::write(
+            &config,
+            "model = \"gpt\"\n\n[mcp_servers.codebase-memory-rlm-mcp]\ncommand = \"old.exe\"\n\n[features]\nhooks = true\n",
+        )
+        .unwrap();
+        let binary = dir.path().join("bin").join("rlm-mcp.exe");
+
+        write_codex_config(&config, &binary).unwrap();
+
+        let content = fs::read_to_string(&config).unwrap();
+        assert!(content.contains("model = \"gpt\""));
+        assert!(content.contains("[features]"));
+        assert!(content.contains("[mcp_servers.rlm-mcp]"));
+        assert!(content.contains("rlm-mcp.exe"));
+        assert!(!content.contains("codebase-memory-rlm-mcp"));
+    }
+
+    #[test]
+    fn codex_registration_is_idempotent() {
+        let dir = TempDir::new().unwrap();
+        let config = dir.path().join("config.toml");
+        let binary = dir.path().join("rlm-mcp.exe");
+
+        write_codex_config(&config, &binary).unwrap();
+        write_codex_config(&config, &binary).unwrap();
+
+        let content = fs::read_to_string(&config).unwrap();
+        assert_eq!(content.matches("[mcp_servers.rlm-mcp]").count(), 1);
     }
 }

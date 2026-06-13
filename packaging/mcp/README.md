@@ -24,7 +24,7 @@ cargo test write_tools_snapshot -- --ignored
 ./install.sh    # Unix
 ```
 
-The checkout installer downloads the latest GitHub Release binary, verifies checksums, copies the binary to `~/.config/rlm-mcp/bin/`, and installs the `rlm` skill. It does not compile Rust. Use `.\install.ps1 -FromSource` or `./install.sh --from-source` only for local unreleased development.
+The checkout installer downloads the latest GitHub Release binary, verifies checksums, copies the binary to `~/.config/rlm-mcp/bin/`, registers OpenCode and Codex, and installs the `rlm` skill. It does not compile Rust. Restart the agent or open a new session to load the tools. Use `.\install.ps1 -FromSource` or `./install.sh --from-source` only for local unreleased development.
 
 ## Manual config
 

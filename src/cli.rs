@@ -26,7 +26,7 @@ pub fn run_cli(args: &[String]) -> Result<()> {
     let result = match command {
         "install" => {
             let binary = std::env::current_exe()?;
-            let configured = crate::install::configure_opencode(&binary)?;
+            let configured = crate::install::configure_agents(&binary)?;
             json!({
                 "installed": true,
                 "binary": binary,

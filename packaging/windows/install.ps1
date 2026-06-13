@@ -2,7 +2,7 @@
 #
 # Usage:
 #   irm https://raw.githubusercontent.com/stevenke1981/rlm-mcp/main/packaging/windows/install.ps1 | iex
-#   $env:RLM_VERSION = "v0.1.3"; .\packaging\windows\install.ps1
+#   $env:RLM_VERSION = "v0.1.4"; .\packaging\windows\install.ps1
 
 param(
     [string]$Version = $(if ($env:RLM_VERSION) { $env:RLM_VERSION } else { "latest" }),
@@ -23,6 +23,9 @@ $Archive = "rlm-mcp-$($Version -replace '^v','')-$Target.zip"
 $Base = "https://github.com/$Repo/releases/download/$Version"
 $Url = "$Base/$Archive"
 $Tmp = Join-Path $env:TEMP "rlm-mcp-install"
+if (Test-Path -LiteralPath $Tmp) {
+    Remove-Item -LiteralPath $Tmp -Recurse -Force
+}
 New-Item -ItemType Directory -Force -Path $Tmp, $InstallDir | Out-Null
 
 $ArchivePath = Join-Path $Tmp $Archive
@@ -71,9 +74,9 @@ if ($userPath -notlike "*$InstallDir*") {
 }
 
 & $InstalledBinary install --json
-if ($LASTEXITCODE -ne 0) { throw "rlm-mcp OpenCode configuration failed" }
+if ($LASTEXITCODE -ne 0) { throw "rlm-mcp agent configuration failed" }
 
 Write-Host ""
 Write-Host "Installed rlm-mcp $Version -> $InstalledBinary" -ForegroundColor Green
-Write-Host ('OpenCode MCP configured: ["{0}"]' -f $InstalledBinary)
+Write-Host ('OpenCode and Codex MCP configured: ["{0}"]' -f $InstalledBinary)
 if ($Skill) { Write-Host "Installed rlm skill for Codex, Claude Code, OpenCode, and agents." }
