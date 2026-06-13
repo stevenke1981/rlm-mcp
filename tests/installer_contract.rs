@@ -44,3 +44,28 @@ fn windows_release_installer_has_locked_binary_fallback() {
         "locked-binary fallback should install a versioned side-by-side exe"
     );
 }
+
+#[test]
+fn release_installers_can_resolve_latest_without_github_api() {
+    let windows = fs::read_to_string(root().join("packaging/windows/install.ps1"))
+        .expect("read windows installer");
+    assert!(
+        windows.contains("Resolve-LatestVersion")
+            && windows.contains("releases/latest")
+            && windows.contains("GITHUB_TOKEN")
+            && windows.contains("GH_TOKEN"),
+        "Windows installer should support authenticated API lookup and a public redirect fallback"
+    );
+
+    for relative_path in ["packaging/linux/install.sh", "packaging/macos/install.sh"] {
+        let script = fs::read_to_string(root().join(relative_path))
+            .unwrap_or_else(|_| panic!("read {relative_path}"));
+        assert!(
+            script.contains("releases/latest")
+                && script.contains("url_effective")
+                && script.contains("GITHUB_TOKEN")
+                && script.contains("GH_TOKEN"),
+            "{relative_path} should support authenticated API lookup and a public redirect fallback"
+        );
+    }
+}

@@ -14,9 +14,66 @@ $ErrorActionPreference = "Stop"
 $InstallDir = if ($env:RLM_INSTALL_DIR) { $env:RLM_INSTALL_DIR } else { "$env:USERPROFILE\.config\rlm-mcp\bin" }
 $Target = "x86_64-pc-windows-msvc"
 
+function Resolve-LatestVersion {
+    param(
+        [Parameter(Mandatory=$true)][string]$Repo
+    )
+
+    $headers = @{ "User-Agent" = "rlm-mcp-installer" }
+    if ($env:GITHUB_TOKEN) {
+        $headers["Authorization"] = "Bearer $env:GITHUB_TOKEN"
+    } elseif ($env:GH_TOKEN) {
+        $headers["Authorization"] = "Bearer $env:GH_TOKEN"
+    }
+
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $headers
+        if ($release.tag_name) {
+            return [string]$release.tag_name
+        }
+    } catch {
+        Write-Warning "GitHub API latest lookup failed; falling back to the public release redirect: $($_.Exception.Message)"
+    }
+
+    $latestUrl = "https://github.com/$Repo/releases/latest"
+    $location = $null
+    try {
+        $response = Invoke-WebRequest -Uri $latestUrl -Headers @{ "User-Agent" = "rlm-mcp-installer" } -UseBasicParsing -MaximumRedirection 0 -ErrorAction Stop
+        if ($response.Headers.Location) {
+            $location = [string]$response.Headers.Location
+        } elseif ($response.BaseResponse.ResponseUri) {
+            $location = [string]$response.BaseResponse.ResponseUri.AbsoluteUri
+        }
+    } catch {
+        $errorResponse = $_.Exception.Response
+        if ($errorResponse) {
+            try {
+                $location = [string]$errorResponse.Headers.Location
+            } catch {
+                $location = $null
+            }
+            if (-not $location) {
+                try {
+                    $location = [string]$errorResponse.Headers["Location"]
+                } catch {
+                    $location = $null
+                }
+            }
+        }
+    }
+
+    if ($location -and $location -notmatch '^https?://') {
+        $location = [Uri]::new([Uri]$latestUrl, $location).AbsoluteUri
+    }
+    if ($location -match '/releases/tag/([^/?#]+)') {
+        return $Matches[1]
+    }
+
+    throw "failed to resolve the latest GitHub Release for $Repo"
+}
+
 if ($Version -eq "latest") {
-    $rel = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
-    $Version = $rel.tag_name
+    $Version = Resolve-LatestVersion -Repo $Repo
 }
 
 $VersionNoV = $Version -replace '^v',''

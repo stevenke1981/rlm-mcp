@@ -23,7 +23,20 @@ esac
 
 if [ "$VERSION" = "latest" ]; then
   API="https://api.github.com/repos/${REPO}/releases/latest"
-  VERSION="$(curl -fsSL "$API" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')"
+  token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+  if [ -n "$token" ]; then
+    VERSION="$(curl -fsSL -H "User-Agent: rlm-mcp-installer" -H "Authorization: Bearer ${token}" "$API" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/' || true)"
+  else
+    VERSION="$(curl -fsSL -H "User-Agent: rlm-mcp-installer" "$API" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/' || true)"
+  fi
+  if [ -z "$VERSION" ]; then
+    latest_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/${REPO}/releases/latest" || true)"
+    VERSION="$(printf '%s\n' "$latest_url" | sed -E 's#^.*/releases/tag/([^/?#]+).*$#\1#')"
+    if [ -z "$VERSION" ] || [ "$VERSION" = "$latest_url" ]; then
+      echo "failed to resolve the latest GitHub Release for ${REPO}" >&2
+      exit 1
+    fi
+  fi
 fi
 
 VERSION_NO_V="${VERSION#v}"
