@@ -10,3 +10,8 @@ build/
 .mypy_cache/
 *.db
 *.db-*
+
+# opencode
+.opencode/tantivy/
+.opencode/vectors.*
+.opencode/*.db
