@@ -50,7 +50,7 @@ curl -fsSL "${BASE}/${ARCHIVE}" -o "$TMP/${ARCHIVE}"
 
 echo "Verifying checksum ..."
 curl -fsSL "${BASE}/SHA256SUMS.txt" -o "$TMP/SHA256SUMS.txt"
-expected="$(grep " ${ARCHIVE}$" "$TMP/SHA256SUMS.txt" | awk '{print $1}')"
+expected="$(grep "${ARCHIVE}$" "$TMP/SHA256SUMS.txt" | awk '{print $1}')"
 if [ -z "$expected" ]; then
   echo "checksum for ${ARCHIVE} not found in SHA256SUMS.txt" >&2
   exit 1
