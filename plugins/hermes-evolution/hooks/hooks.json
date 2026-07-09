@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|PowerShell|shell_command)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/bin/rlm_mcp_release_guard.py\"",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\hooks\\bin\\rlm_mcp_release_guard.py\"",
+            "timeout": 10,
+            "statusMessage": "Checking rlm-mcp release guard"
+          }
+        ]
+      }
+    ]
+  }
+}

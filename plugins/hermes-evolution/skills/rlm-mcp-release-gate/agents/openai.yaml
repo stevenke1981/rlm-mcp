@@ -1,0 +1,6 @@
+interface:
+  display_name: "rlm-mcp Release Gate"
+  short_description: "Verify and package rlm-mcp changes."
+  default_prompt: "Use $rlm-mcp-release-gate to verify and package this repo."
+policy:
+  allow_implicit_invocation: true

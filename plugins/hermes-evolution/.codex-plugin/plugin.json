@@ -1,0 +1,22 @@
+{
+  "name": "hermes-evolution",
+  "version": "0.1.0",
+  "description": "Repo-local Hermes release discipline for rlm-mcp agents.",
+  "author": {
+    "name": "RLM Contributors"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Hermes Evolution",
+    "shortDescription": "Release gates and repo safety for rlm-mcp.",
+    "longDescription": "Hermes Evolution gives Codex agents a compact release checklist, reusable rlm-mcp verification workflow, and hook-based guardrails for risky local commands.",
+    "developerName": "RLM Contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Skills",
+      "Hooks",
+      "Release verification"
+    ],
+    "defaultPrompt": "Use $rlm-mcp-release-gate to verify and package this repo."
+  }
+}
