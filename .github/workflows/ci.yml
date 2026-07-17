@@ -27,12 +27,9 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+  # Always run full tests on Ubuntu (PR + push).
   test:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -44,10 +41,31 @@ jobs:
         run: cargo test --all-targets
 
       - name: Release build + smoke
-        if: matrix.os == 'ubuntu-latest'
         run: |
           cargo build --release
           cargo test --test release_smoke --release
+
+  # Windows/macOS only on main pushes to control Actions minutes.
+  # PRs stay Ubuntu-only; release.yml already covers multi-OS release builds.
+  test-windows:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests
+        run: cargo test --all-targets
+
+  test-macos:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests
+        run: cargo test --all-targets
 
   security-audit:
     runs-on: ubuntu-latest

@@ -4,6 +4,7 @@ use std::sync::OnceLock;
 
 const CACHE_SUBDIRS: &[&str] = &[
     "rlm-sessions",
+    "rlm-chunks",
     "rlm-artifacts",
     "rlm-trajectories",
     "rlm-tasks",

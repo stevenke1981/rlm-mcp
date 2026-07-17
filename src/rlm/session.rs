@@ -15,7 +15,12 @@ pub struct Chunk {
     pub path: String,
     pub offset: usize,
     pub line_count: usize,
+    /// Inline body for legacy sessions / export. Empty when content is on disk.
+    #[serde(default)]
     pub content: String,
+    /// Relative file under `rlm-chunks/<session_id>/` when using lazy storage.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_file: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -78,6 +83,11 @@ impl SessionStore {
 
     pub fn create_from_path(&mut self, path: &str) -> Result<ScanSession> {
         let root = super::safety::resolve_scan_path(path)?;
+        // Pre-allocate session id so chunk bodies can spill during the scan
+        // without holding the full corpus in the session JSON / RAM.
+        let session_id = Uuid::new_v4().to_string();
+        let _ = super::chunk_store::ensure_chunks_layout();
+        let mut next_chunk_idx = 0usize;
 
         let mut chunks = Vec::new();
         let mut total_bytes = 0usize;
@@ -162,6 +172,8 @@ impl SessionStore {
                 &mut chunks,
                 self.config.chunk_lines,
                 self.config.max_chunks,
+                Some(&session_id),
+                &mut next_chunk_idx,
             ) {
                 Ok(bytes_added) => {
                     total_bytes = total_bytes.saturating_add(bytes_added);
@@ -181,6 +193,7 @@ impl SessionStore {
         }
 
         self.finalize_session(
+            Some(session_id),
             root.to_string_lossy().to_string(),
             "path",
             chunks,
@@ -220,6 +233,7 @@ impl SessionStore {
         );
 
         self.finalize_session(
+            None,
             format!("text://{virtual_path}"),
             "text",
             chunks,
@@ -234,6 +248,7 @@ impl SessionStore {
     #[allow(clippy::too_many_arguments)]
     fn finalize_session(
         &mut self,
+        preset_id: Option<String>,
         root_path: String,
         source_kind: &str,
         chunks: Vec<Chunk>,
@@ -245,7 +260,7 @@ impl SessionStore {
     ) -> Result<ScanSession> {
         let now = super::persistence::unix_now();
         let mut session = ScanSession {
-            id: Uuid::new_v4().to_string(),
+            id: preset_id.unwrap_or_else(|| Uuid::new_v4().to_string()),
             root_path,
             source_kind: source_kind.into(),
             chunks,
@@ -259,6 +274,9 @@ impl SessionStore {
             revision: 1,
         };
         assign_chunk_ids(&mut session);
+        // Spill any remaining inline bodies (e.g. create_from_text) so session
+        // JSON stays metadata-only and RAM does not retain full corpus.
+        super::chunk_store::spill_session_chunks(&session.id, &mut session.chunks)?;
         self.sessions.insert(session.id.clone(), session.clone());
         super::persistence::persist_session(&session)?;
         let _ = self.purge_expired();
@@ -332,6 +350,7 @@ impl SessionStore {
             return Err(Error::SessionNotFound(id.to_string()));
         }
         super::persistence::remove_session_file(id)?;
+        let _ = super::chunk_store::remove_session_chunks(id);
         Ok(())
     }
 
@@ -349,7 +368,10 @@ impl SessionStore {
 
     pub fn export(&mut self, id: &str) -> Result<ScanSession> {
         self.get_or_hydrate(id)?;
-        Ok(self.sessions.get(id).unwrap().clone())
+        let mut session = self.sessions.get(id).unwrap().clone();
+        // Portable export: inline bodies so the JSON is self-contained.
+        super::chunk_store::materialize_session_inline(&session.id, &mut session.chunks)?;
+        Ok(session)
     }
 
     pub fn import_session(
@@ -372,10 +394,16 @@ impl SessionStore {
             session.expires_at_unix =
                 super::persistence::unix_now().saturating_add(self.config.session_ttl_secs);
         }
+        super::chunk_store::spill_session_chunks(&session.id, &mut session.chunks)?;
         self.sessions.insert(session.id.clone(), session.clone());
         super::persistence::persist_session(&session)?;
         let _ = self.purge_expired();
         Ok(session)
+    }
+
+    /// Resolve chunk body (inline or lazy file). Used by engine/filter/task.
+    pub fn resolve_chunk_content(session_id: &str, chunk: &Chunk) -> Result<String> {
+        super::chunk_store::resolve_content(session_id, chunk)
     }
 }
 
@@ -425,6 +453,7 @@ pub(crate) fn append_chunks(
             offset: i * chunk_lines,
             line_count: window.len(),
             content: window.join("\n"),
+            content_file: None,
         });
     }
 }
@@ -439,14 +468,19 @@ const BINARY_PROBE_BYTES: u64 = 8192;
 
 /// Stream a file into line-window chunks without loading the full file as one `String`.
 ///
+/// When `lazy_session_id` is set, each completed window is written to the on-disk
+/// chunk store immediately and only metadata is kept in RAM.
+///
 /// Probe the first [`BINARY_PROBE_BYTES`] for binary heuristics, then read with
-/// `BufReader` line-by-line. Returns total UTF-8 content bytes counted (joined with `\n`).
+/// `BufReader` line-by-line. Returns total file bytes read.
 fn stream_file_into_chunks(
     file_path: &Path,
     rel_path: &str,
     chunks: &mut Vec<Chunk>,
     chunk_lines: usize,
     max_chunks: usize,
+    lazy_session_id: Option<&str>,
+    next_chunk_idx: &mut usize,
 ) -> std::result::Result<usize, StreamSkip> {
     let mut file = std::fs::File::open(file_path).map_err(|_| StreamSkip::Unreadable)?;
 
@@ -498,30 +532,67 @@ fn stream_file_into_chunks(
                 }
                 break;
             }
-            chunks.push(Chunk {
-                id: String::new(),
-                path: rel_path.to_string(),
-                offset: line_offset,
-                line_count: window.len(),
-                content: window.join("\n"),
-            });
+            push_streamed_chunk(
+                chunks,
+                rel_path,
+                line_offset,
+                &window,
+                lazy_session_id,
+                next_chunk_idx,
+            )?;
             line_offset = line_offset.saturating_add(lines_per_chunk);
             window.clear();
         }
     }
 
     if !window.is_empty() && chunks.len() < max_chunks {
+        push_streamed_chunk(
+            chunks,
+            rel_path,
+            line_offset,
+            &window,
+            lazy_session_id,
+            next_chunk_idx,
+        )?;
+    }
+
+    // Empty file: no chunks, zero bytes (same as append_chunks on empty).
+    Ok(total_bytes)
+}
+
+fn push_streamed_chunk(
+    chunks: &mut Vec<Chunk>,
+    rel_path: &str,
+    line_offset: usize,
+    window: &[String],
+    lazy_session_id: Option<&str>,
+    next_chunk_idx: &mut usize,
+) -> std::result::Result<(), StreamSkip> {
+    let content = window.join("\n");
+    if let Some(session_id) = lazy_session_id {
+        let id = format!("c-{next_chunk_idx}");
+        *next_chunk_idx = next_chunk_idx.saturating_add(1);
+        let file_name = super::chunk_store::write_chunk_content(session_id, &id, &content)
+            .map_err(|_| StreamSkip::Unreadable)?;
+        chunks.push(Chunk {
+            id,
+            path: rel_path.to_string(),
+            offset: line_offset,
+            line_count: window.len(),
+            content: String::new(),
+            content_file: Some(file_name),
+        });
+    } else {
         chunks.push(Chunk {
             id: String::new(),
             path: rel_path.to_string(),
             offset: line_offset,
             line_count: window.len(),
-            content: window.join("\n"),
+            content,
+            content_file: None,
         });
     }
-
-    // Empty file: no chunks, zero bytes (same as append_chunks on empty).
-    Ok(total_bytes)
+    Ok(())
 }
 
 fn assign_chunk_ids(session: &mut ScanSession) {
@@ -619,12 +690,28 @@ mod tests {
         let mut expected = Vec::new();
         append_chunks(&mut expected, "big.txt", &body, 100, 10_000);
         assert_eq!(session.chunks.len(), expected.len());
-        assert_eq!(session.chunks[0].content, expected[0].content);
-        assert_eq!(
-            session.chunks.last().unwrap().content,
-            expected.last().unwrap().content
-        );
+        // Lazy path: bodies live on disk; metadata only in session.
+        assert!(session.chunks[0].content.is_empty());
+        assert!(session.chunks[0].content_file.is_some());
+        let resolved =
+            SessionStore::resolve_chunk_content(&session.id, &session.chunks[0]).unwrap();
+        assert_eq!(resolved, expected[0].content);
+        let last = SessionStore::resolve_chunk_content(&session.id, session.chunks.last().unwrap())
+            .unwrap();
+        assert_eq!(last, expected.last().unwrap().content);
         assert_eq!(session.total_bytes, body.len());
+
+        // Session JSON on disk must not embed full corpus.
+        let session_json = std::fs::read_to_string(
+            crate::project::default_cache_dir()
+                .join("rlm-sessions")
+                .join(format!("{}.json", session.id)),
+        )
+        .unwrap();
+        assert!(
+            !session_json.contains("line-100"),
+            "session JSON should not embed chunk bodies"
+        );
 
         std::env::remove_var("RLM_CACHE_DIR");
     }

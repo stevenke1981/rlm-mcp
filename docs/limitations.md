@@ -105,6 +105,8 @@ These are **design choices**, not bugs:
 | Max file / session size | `RLM_MAX_FILE_BYTES`, `RLM_MAX_TOTAL_BYTES` |
 | Max chunks / sessions | `RLM_MAX_CHUNKS`, `RLM_MAX_SESSIONS` |
 | Session expiry | `RLM_SESSION_TTL_SECS`; `rlm_session_cleanup` |
+| Chunk body storage | Lazy on-disk under `rlm-chunks/` (session JSON is metadata-only); see [`lazy-chunk-store.md`](lazy-chunk-store.md) |
+| Semantic / embedding peek | Not shipped; use BM25; roadmap in [`embedding-roadmap.md`](embedding-roadmap.md) |
 | Binary / oversized files | Skipped with `skip_reasons` in scan metadata |
 | Concurrent writers | Per-session lock; readers use `get_or_hydrate` |
 | Cross-process reads | Sessions on disk under `RLM_CACHE_DIR` |
@@ -123,7 +125,7 @@ Use the **full RLM loop** when:
 Skip or shorten the loop when:
 
 - Entire input fits one model call with room to spare.
-- Task is purely **semantic** and substring peek cannot locate candidates (wait for BM25/embeddings or use external retrieval).
+- Task is purely **semantic** and BM25 still cannot locate candidates (embeddings deferred; use external retrieval if needed).
 - You need **symbol-level** code navigation (use `cbm-mcp`).
 - You require **live recursive sub-models** today without building agent-side provider calls.
 

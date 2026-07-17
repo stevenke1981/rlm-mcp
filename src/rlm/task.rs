@@ -365,7 +365,8 @@ fn build_context(
             .iter()
             .find(|c| c.id == *id)
             .ok_or_else(|| Error::InvalidArgument(format!("chunk not found: {id}")))?;
-        parts.push(format!("--- {} ---\n{}", chunk.path, chunk.content));
+        let body = crate::rlm::chunk_store::resolve_content(&session.id, chunk)?;
+        parts.push(format!("--- {} ---\n{}", chunk.path, body));
     }
     Ok(parts.join("\n\n"))
 }

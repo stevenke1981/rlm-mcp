@@ -1,4 +1,5 @@
 use crate::rlm::bm25::{tokenize, Bm25Scorer};
+use crate::rlm::chunk_store;
 use crate::rlm::session::{Chunk, ScanSession};
 use regex::Regex;
 use serde_json::{json, Value};
@@ -54,7 +55,11 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
             continue;
         }
 
-        let line_matches = find_line_matches(chunk, &opts, compiled.as_ref());
+        let content = match chunk_store::resolve_content(&session.id, chunk) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let line_matches = find_line_matches(chunk, &content, &opts, compiled.as_ref());
         total_matches += line_matches.len();
 
         if line_matches.is_empty() {
@@ -73,7 +78,7 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
                 "preview": preview,
             });
             if opts.include_content {
-                entry["content"] = json!(chunk.content);
+                entry["content"] = json!(content);
             }
             results.push(entry);
             if results.len() >= opts.limit {
@@ -105,23 +110,34 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
     })
 }
 
-struct LineCandidate<'a> {
-    chunk: &'a Chunk,
-    line_idx: usize,
-    line_no: usize,
-}
-
 fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
     let query_text = opts.query.unwrap_or("");
     let query_tokens = tokenize(query_text, opts.case_sensitive);
 
-    let mut candidates = Vec::new();
+    struct OwnedCandidate {
+        chunk_id: String,
+        path: String,
+        chunk_offset: usize,
+        line_idx: usize,
+        line_no: usize,
+        /// Index into `bodies` (one resolved body per chunk).
+        body_idx: usize,
+    }
+
+    let mut bodies: Vec<String> = Vec::new();
+    let mut candidates: Vec<OwnedCandidate> = Vec::new();
     for chunk in &session.chunks {
         if !path_matches(chunk, opts.path_filter, opts.glob) {
             continue;
         }
-        let lines: Vec<&str> = chunk.content.lines().collect();
-        for (i, _line) in lines.iter().enumerate() {
+        let content = match chunk_store::resolve_content(&session.id, chunk) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let body_idx = bodies.len();
+        let line_count = content.lines().count();
+        bodies.push(content);
+        for i in 0..line_count {
             let line_no = chunk.offset + i + 1;
             if let Some(start) = opts.line_start {
                 if line_no < start {
@@ -133,10 +149,13 @@ fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
                     continue;
                 }
             }
-            candidates.push(LineCandidate {
-                chunk,
+            candidates.push(OwnedCandidate {
+                chunk_id: chunk.id.clone(),
+                path: chunk.path.clone(),
+                chunk_offset: chunk.offset,
                 line_idx: i,
                 line_no,
+                body_idx,
             });
         }
     }
@@ -144,7 +163,7 @@ fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
     let doc_tokens: Vec<Vec<String>> = candidates
         .iter()
         .map(|c| {
-            let line = c.chunk.content.lines().nth(c.line_idx).unwrap_or("");
+            let line = bodies[c.body_idx].lines().nth(c.line_idx).unwrap_or("");
             tokenize(line, opts.case_sensitive)
         })
         .collect();
@@ -168,18 +187,18 @@ fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
 
     for (idx, score) in top {
         let c = &candidates[idx];
-        let lines: Vec<&str> = c.chunk.content.lines().collect();
-        *file_counts.entry(c.chunk.path.clone()).or_default() += 1;
+        let lines: Vec<&str> = bodies[c.body_idx].lines().collect();
+        *file_counts.entry(c.path.clone()).or_default() += 1;
         let mut entry = json!({
-            "chunk_id": c.chunk.id,
-            "path": c.chunk.path,
-            "chunk_offset": c.chunk.offset,
+            "chunk_id": c.chunk_id,
+            "path": c.path,
+            "chunk_offset": c.chunk_offset,
             "line": c.line_no,
             "preview": preview_with_context(&lines, c.line_idx, opts.context_radius),
             "bm25_score": (score * 1000.0).round() / 1000.0,
         });
         if opts.include_content {
-            entry["content"] = json!(c.chunk.content);
+            entry["content"] = json!(bodies[c.body_idx]);
         }
         results.push(entry);
     }
@@ -229,10 +248,11 @@ fn path_matches(chunk: &Chunk, path_filter: Option<&str>, glob: Option<&str>) ->
 
 fn find_line_matches(
     chunk: &Chunk,
+    content: &str,
     opts: &PeekOptions<'_>,
     compiled: Option<&Regex>,
 ) -> Vec<(usize, String)> {
-    let lines: Vec<&str> = chunk.content.lines().collect();
+    let lines: Vec<&str> = content.lines().collect();
     let mut hits = Vec::new();
 
     for (i, line) in lines.iter().enumerate() {
@@ -286,7 +306,11 @@ fn summarize_files(session: &ScanSession, opts: &PeekOptions<'_>) -> Vec<Value> 
         if !path_matches(chunk, opts.path_filter, opts.glob) {
             continue;
         }
-        let n = find_line_matches(chunk, opts, compiled.as_ref()).len();
+        let content = match chunk_store::resolve_content(&session.id, chunk) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let n = find_line_matches(chunk, &content, opts, compiled.as_ref()).len();
         if n > 0 || (opts.query.is_none() && (opts.path_filter.is_some() || opts.glob.is_some())) {
             *counts.entry(chunk.path.clone()).or_default() += n.max(1);
         }
@@ -322,6 +346,7 @@ mod tests {
                 offset: 0,
                 line_count: content.lines().count(),
                 content: content.into(),
+                content_file: None,
             }],
             files_scanned: 1,
             files_skipped: 0,

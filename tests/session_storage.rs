@@ -62,7 +62,16 @@ fn import_export_round_trip() {
 
         let imported = store.import_session(exported, true).unwrap();
         assert_eq!(imported.id, original.id);
-        assert_eq!(imported.chunks[0].content, "needle");
+        // Import spills bodies to lazy disk storage; resolve on demand.
+        assert!(imported.chunks[0].content.is_empty());
+        assert!(imported.chunks[0].content_file.is_some());
+        let body =
+            SessionStore::resolve_chunk_content(&imported.id, &imported.chunks[0]).unwrap();
+        assert_eq!(body, "needle");
+        // Export is self-contained (inline).
+        let exported2 = store.export(&imported.id).unwrap();
+        assert_eq!(exported2.chunks[0].content, "needle");
+        assert!(exported2.chunks[0].content_file.is_none());
     });
 }
 

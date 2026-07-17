@@ -1,11 +1,19 @@
+use crate::rlm::chunk_store;
 use crate::rlm::session::ScanSession;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
 pub fn env_info(session: &ScanSession) -> Value {
     let mut files: HashMap<String, Value> = HashMap::new();
+    let mut lazy_chunks = 0u64;
 
     for chunk in &session.chunks {
+        if chunk.content_file.is_some() && chunk.content.is_empty() {
+            lazy_chunks += 1;
+        }
+        let body_len = chunk_store::resolve_content(&session.id, chunk)
+            .map(|c| c.len())
+            .unwrap_or(0);
         let entry = files.entry(chunk.path.clone()).or_insert_with(|| {
             json!({
                 "path": chunk.path,
@@ -18,7 +26,7 @@ pub fn env_info(session: &ScanSession) -> Value {
         entry["chunk_count"] = json!(entry["chunk_count"].as_u64().unwrap_or(0) + 1);
         entry["line_count"] =
             json!(entry["line_count"].as_u64().unwrap_or(0) + chunk.line_count as u64);
-        entry["bytes"] = json!(entry["bytes"].as_u64().unwrap_or(0) + chunk.content.len() as u64);
+        entry["bytes"] = json!(entry["bytes"].as_u64().unwrap_or(0) + body_len as u64);
         if let Some(ids) = entry["chunk_ids"].as_array_mut() {
             ids.push(json!(chunk.id));
         }
@@ -38,6 +46,8 @@ pub fn env_info(session: &ScanSession) -> Value {
         "source_kind": session.source_kind,
         "context_length_bytes": session.total_bytes,
         "chunk_count": session.chunks.len(),
+        "lazy_chunk_count": lazy_chunks,
+        "chunk_storage": if lazy_chunks > 0 { "lazy_disk" } else { "inline" },
         "file_count": session.files_scanned,
         "files_skipped": session.files_skipped,
         "skip_reasons": session.skip_reasons,
@@ -51,10 +61,11 @@ pub fn env_info(session: &ScanSession) -> Value {
 
 pub fn slice_chunk(
     chunk: &crate::rlm::session::Chunk,
+    content: &str,
     start_line: usize,
     end_line: usize,
 ) -> Value {
-    let lines: Vec<&str> = chunk.content.lines().collect();
+    let lines: Vec<&str> = content.lines().collect();
     let start_idx = start_line.saturating_sub(chunk.offset + 1);
     let end_idx = end_line.saturating_sub(chunk.offset).min(lines.len());
     let slice = if start_idx < lines.len() && start_idx < end_idx {

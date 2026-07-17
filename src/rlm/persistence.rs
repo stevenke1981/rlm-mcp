@@ -255,6 +255,7 @@ pub fn purge_expired(
     for id in expired {
         sessions.remove(&id);
         let _ = remove_session_file(&id);
+        let _ = super::chunk_store::remove_session_chunks(&id);
     }
     Ok(())
 }
@@ -275,6 +276,7 @@ pub fn trim_to_limit(
     for (id, _) in ids.into_iter().take(remove_count) {
         sessions.remove(&id);
         let _ = remove_session_file(&id);
+        let _ = super::chunk_store::remove_session_chunks(&id);
     }
     Ok(())
 }
@@ -297,6 +299,7 @@ mod tests {
                 offset: 0,
                 line_count: 1,
                 content: "test".into(),
+                content_file: None,
             }],
             total_bytes: 4,
             files_scanned: 1,

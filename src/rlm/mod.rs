@@ -1,6 +1,7 @@
 mod artifacts;
 mod bm25;
 mod budget;
+mod chunk_store;
 mod config;
 mod env;
 mod filter;
@@ -183,7 +184,8 @@ impl RlmEngine {
         let started = Instant::now();
         let mut store = self.sessions.lock().unwrap();
         let chunk = store.get_chunk(session_id, chunk_id)?.clone();
-        let out = env::slice_chunk(&chunk, start_line, end_line);
+        let body = SessionStore::resolve_chunk_content(session_id, &chunk)?;
+        let out = env::slice_chunk(&chunk, &body, start_line, end_line);
         self.record(
             session_id,
             "slice",
@@ -222,7 +224,7 @@ impl RlmEngine {
         if let Some(id) = chunk_id {
             let mut store = self.sessions.lock().unwrap();
             let chunk = store.get_chunk(session_id, id)?.clone();
-            return Ok(chunk.content);
+            return SessionStore::resolve_chunk_content(session_id, &chunk);
         }
         Err(Error::InvalidArgument(
             "provide content, artifact_name, or chunk_id".into(),
@@ -336,7 +338,8 @@ impl RlmEngine {
             text.to_string()
         } else if let Some(chunk_id) = source_chunk_id {
             let mut store = self.sessions.lock().unwrap();
-            store.get_chunk(session_id, chunk_id)?.content.clone()
+            let chunk = store.get_chunk(session_id, chunk_id)?.clone();
+            SessionStore::resolve_chunk_content(session_id, &chunk)?
         } else {
             return Err(Error::InvalidArgument(
                 "provide content or source_chunk_id".into(),
@@ -420,7 +423,8 @@ impl RlmEngine {
         let chunks: Vec<Value> = page
             .iter()
             .map(|c| {
-                let (content, truncated) = safety::truncate_chunk_content(&c.content);
+                let body = SessionStore::resolve_chunk_content(session_id, c).unwrap_or_default();
+                let (content, truncated) = safety::truncate_chunk_content(&body);
                 if truncated {
                     any_truncated = true;
                 }
@@ -430,6 +434,7 @@ impl RlmEngine {
                     "offset": c.offset,
                     "line_count": c.line_count,
                     "content": content,
+                    "content_lazy": c.content_file.is_some() && c.content.is_empty(),
                     "truncated": truncated,
                     "max_chunk_bytes": max_chunk_bytes
                 })
