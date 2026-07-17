@@ -18,7 +18,7 @@
 | P0 | packaging 安全 env 範例 | **Done**（本 PR） |
 | P1 | BM25 peek 預過濾 + bytes_scanned | **Done**（本 PR） |
 | P1 | workflow triage 建議 | **Done**（本 PR） |
-| P1 | 拆分 `RlmEngine` 上帝物件 | Planned |
+| P1 | 拆分 `RlmEngine` 上帝物件 | **Done**（本 PR） |
 | P1 | BM25 索引持久化 | **Done**（本 PR） |
 | P1 | 更細的 session/trajectory 鎖 | Planned |
 | P2 | BrowseComp / OOLONG-Pairs mini fixtures | Planned |
@@ -73,15 +73,18 @@
 
 ## 4. P1 後續（尚未做）
 
-### 4.1 拆分 `RlmEngine`（`src/rlm/mod.rs` ~900 行）
-
-建議：
+### 4.1 拆分 `RlmEngine` — **Done**
 
 ```
-rlm/engine/{session_ops,map_ops,task_ops,observe}.rs
+src/rlm/engine/
+  mod.rs          # struct, new, ensure_session_budget, record
+  session_ops.rs  # scan/peek/chunk/session/repl/artifact
+  map_ops.rs      # map plan/claim/complete + reduce
+  task_ops.rs     # task create/list/result/reduce/cancel
+  observe.rs      # workflow, trajectory, budget
 ```
 
-行為不變；先拆檔再考慮 trait 邊界。
+Public path unchanged: `rlm_mcp::rlm::RlmEngine`.
 
 ### 4.2 BM25 索引持久化 — **Done**
 
@@ -145,6 +148,6 @@ cargo test write_tools_snapshot -- --ignored
 
 1. 讀本文件與 [limitations.md](limitations.md)
 2. 不要重做「已完成」列
-3. 下一刀優先：**RlmEngine 拆分** 或 BrowseComp mini fixtures
+3. 下一刀優先：**BrowseComp / OOLONG-Pairs mini fixtures** 或 trajectory 細鎖
 4. 任何 tool schema 變更必須同步 snapshot
 5. 取消路徑必須 kill 子行程並回 `Cancelled` / `isError`
