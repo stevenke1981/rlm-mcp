@@ -100,6 +100,10 @@ All `rlm_scan` paths are validated:
 - Binary files (containing NUL bytes or high control-character ratio) are
   detected and skipped.
 
+**CI:** Pull requests run `cargo test --test path_safety` on **Windows**
+(`.github/workflows/ci.yml` job `path-safety-windows`) so backslash / mixed-separator
+traversal cases are not Ubuntu-only. Full Windows/macOS suites still run on `main` pushes.
+
 ---
 
 ## 4. Session Data Security

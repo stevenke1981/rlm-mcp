@@ -45,8 +45,20 @@ jobs:
           cargo build --release
           cargo test --test release_smoke --release
 
-  # Windows/macOS only on main pushes to control Actions minutes.
-  # PRs stay Ubuntu-only; release.yml already covers multi-OS release builds.
+  # PRs: Windows path_safety only (cheap; catches .. / \ traversal bugs Ubuntu may miss).
+  # Full Windows/macOS suites stay on main pushes; release.yml covers multi-OS release builds.
+  path-safety-windows:
+    if: github.event_name == 'pull_request'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: path-safety-windows
+      - name: Path safety tests
+        run: cargo test --test path_safety
+
   test-windows:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: windows-latest
