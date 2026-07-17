@@ -31,7 +31,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["v4"] }
 regex = "1"
 tempfile = "3"
-ureq = { version = "2", features = ["json"] }
+ureq = { version = "3", features = ["json"] }
 
 [dev-dependencies]
 rmcp = { version = "1.7.0", features = ["client", "transport-io"] }
