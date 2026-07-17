@@ -19,4 +19,4 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Optional S-NIAH large fixtures
-        run: cargo test --test benchmark_sniah sniah_large_suite sniah_nightly_suite -- --ignored
+        run: cargo test --test benchmark_sniah -- --ignored sniah_large_suite sniah_nightly_suite
