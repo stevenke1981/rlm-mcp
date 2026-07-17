@@ -13,8 +13,12 @@ Recursive tasks (`rlm_task_create`) use a provider trait:
 |----------|------|--------|
 | `mock` | Offline tests, deterministic | Default for tests |
 | `dry-run` | Plan without model calls | `provider=dry-run` |
-| `openai` | OpenAI-compatible HTTP API | `RLM_OPENAI_API_KEY`, `RLM_OPENAI_BASE_URL`, `RLM_ALLOW_NETWORK=1` |
+| `openai` | OpenAI-compatible HTTP (async reqwest/rustls) | `RLM_OPENAI_API_KEY`, `RLM_OPENAI_BASE_URL`, `RLM_ALLOW_NETWORK=1`, optional `RLM_OPENAI_TIMEOUT_SECS` |
 | `command` | Local executable worker | `RLM_PROVIDER_COMMAND`, optional sandbox |
+
+The openai provider implements `invoke_async` and bridges to the sync
+`SubModelProvider` trait for the task runtime. It shares a pooled `reqwest::Client`
+and aborts when MCP cancel is set.
 
 ### Command provider contract
 

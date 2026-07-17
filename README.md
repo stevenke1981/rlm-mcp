@@ -182,6 +182,7 @@ resource limits, and sandboxed command provider mounts.
 | `RLM_OPENAI_API_KEY` | — | OpenAI-compatible API key (never persisted) |
 | `RLM_OPENAI_BASE_URL` | `https://api.openai.com/v1` | Compatible API base URL |
 | `RLM_OPENAI_MODEL` | `gpt-4o-mini` | Model name for sub-calls |
+| `RLM_OPENAI_TIMEOUT_SECS` | `120` | Async HTTP request timeout for openai provider |
 | `RLM_PROVIDER_COMMAND` | — | Executable for `command` provider |
 | `RLM_PROVIDER_ARGS` | `[]` | JSON array or whitespace-separated args |
 | `RLM_PROVIDER_SANDBOX` | `warn` | Sandbox mode: `strict`, `warn`, or `off` (see [security](docs/security.md)) |

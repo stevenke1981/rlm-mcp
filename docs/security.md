@@ -85,6 +85,9 @@ $env:RLM_OPENAI_BASE_URL = "https://api.openai.com/v1"
   sessions or persisted to disk.
 - Response metadata is automatically sanitized to strip `api_key`,
   `authorization`, and `secret` fields from structured output.
+- HTTP uses **async reqwest** (rustls) with connection pooling. Requests abort
+  when the MCP request is cancelled and honor `RLM_OPENAI_TIMEOUT_SECS`
+  (default 120s; falls back to `RLM_PROVIDER_MAX_WALL_SECS` when set).
 
 ---
 

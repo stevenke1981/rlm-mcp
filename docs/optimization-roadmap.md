@@ -22,7 +22,7 @@
 | P1 | BM25 索引持久化 | **Done**（本 PR） |
 | P1 | 更細的 session/trajectory 鎖 | **Done**（本 PR） |
 | P2 | BrowseComp / OOLONG-Pairs mini fixtures | **Done**（本 PR） |
-| P2 | async HTTP provider（reqwest feature） | Planned |
+| P2 | async HTTP provider（reqwest） | **Done**（本 PR） |
 | P2 | semantic embedding peek（optional feature） | Deferred — see [embedding-roadmap.md](embedding-roadmap.md) |
 
 ---
@@ -149,6 +149,6 @@ cargo test write_tools_snapshot -- --ignored
 
 1. 讀本文件與 [limitations.md](limitations.md)
 2. 不要重做「已完成」列
-3. 下一刀優先：**async HTTP provider** 或 retrieval baseline 文件對齊
+3. 下一刀優先：**retrieval baseline 文件對齊** 或 GHCR Docker push
 4. 任何 tool schema 變更必須同步 snapshot
 5. 取消路徑必須 kill 子行程並回 `Cancelled` / `isError`

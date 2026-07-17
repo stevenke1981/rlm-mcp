@@ -1,6 +1,16 @@
+//! OpenAI-compatible chat completions provider using **async** `reqwest`.
+//!
+//! Sync [`SubModelProvider::invoke`] bridges to the Tokio runtime (via
+//! `block_in_place` when already inside a runtime, otherwise a dedicated
+//! multi-thread runtime). Requests honor MCP cancel (`cancel::is_cancelled`)
+//! and `RLM_OPENAI_TIMEOUT_SECS` / `RLM_PROVIDER_MAX_WALL_SECS`.
+
 use super::{ProviderResult, ProviderUsage, SubModelProvider};
 use crate::error::{Error, Result};
+use crate::rlm::cancel;
 use serde_json::{json, Value};
+use std::sync::OnceLock;
+use std::time::Duration;
 
 pub struct OpenAiCompatibleProvider {
     api_key: String,
@@ -8,6 +18,71 @@ pub struct OpenAiCompatibleProvider {
     model: String,
     prompt_cost_per_1k: Option<f64>,
     completion_cost_per_1k: Option<f64>,
+}
+
+fn http_timeout() -> Duration {
+    if let Ok(v) = std::env::var("RLM_OPENAI_TIMEOUT_SECS") {
+        if let Ok(secs) = v.parse::<u64>() {
+            if secs == 0 {
+                return Duration::from_secs(120);
+            }
+            return Duration::from_secs(secs);
+        }
+    }
+    match std::env::var("RLM_PROVIDER_MAX_WALL_SECS") {
+        Ok(v) => {
+            let secs: u64 = v.parse().unwrap_or(120);
+            if secs == 0 {
+                Duration::from_secs(300)
+            } else {
+                Duration::from_secs(secs.min(600))
+            }
+        }
+        Err(_) => Duration::from_secs(120),
+    }
+}
+
+fn shared_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(http_timeout())
+            .connect_timeout(Duration::from_secs(15))
+            .pool_max_idle_per_host(4)
+            .user_agent(format!("rlm-mcp/{}", env!("CARGO_PKG_VERSION")))
+            .build()
+            .expect("failed to build reqwest client")
+    })
+}
+
+fn block_on<F, T>(fut: F) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(fut)),
+        Err(_) => {
+            static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+            let rt = RT.get_or_init(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .worker_threads(2)
+                    .enable_all()
+                    .thread_name("rlm-http")
+                    .build()
+                    .expect("failed to build rlm-http runtime")
+            });
+            rt.block_on(fut)
+        }
+    }
+}
+
+async fn wait_for_cancel() {
+    loop {
+        if cancel::is_cancelled() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(40)).await;
+    }
 }
 
 impl OpenAiCompatibleProvider {
@@ -96,14 +171,13 @@ impl OpenAiCompatibleProvider {
         let completion = completion_tokens.unwrap_or(0) as f64;
         Some((prompt / 1000.0) * prompt_rate + (completion / 1000.0) * completion_rate)
     }
-}
 
-impl SubModelProvider for OpenAiCompatibleProvider {
-    fn name(&self) -> &str {
-        "openai"
-    }
+    /// Async chat completion with cancel + timeout.
+    pub async fn invoke_async(&self, prompt: &str, context: &str) -> Result<ProviderResult> {
+        if cancel::is_cancelled() {
+            return Err(Error::Cancelled("openai request cancelled".into()));
+        }
 
-    fn invoke(&self, prompt: &str, context: &str) -> Result<ProviderResult> {
         let url = format!("{}/chat/completions", self.base_url);
         let request_body = json!({
             "model": self.model,
@@ -119,21 +193,60 @@ impl SubModelProvider for OpenAiCompatibleProvider {
             ]
         });
 
-        // ureq 3.x: `.header` + `send_json` + `body_mut().read_json`
-        let mut response = ureq::post(&url)
-            .header("Authorization", &format!("Bearer {}", self.api_key))
+        let client = shared_client();
+        let timeout = http_timeout();
+        let send_fut = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
-            .send_json(&request_body)
-            .map_err(|e| Error::Other(format!("openai request failed: {e}")))?;
+            .json(&request_body)
+            .send();
+
+        let response = tokio::select! {
+            biased;
+            _ = wait_for_cancel() => {
+                return Err(Error::Cancelled("openai request cancelled".into()));
+            }
+            timed = tokio::time::timeout(timeout, send_fut) => {
+                match timed {
+                    Ok(Ok(resp)) => resp,
+                    Ok(Err(e)) => {
+                        return Err(Error::Other(format!("openai request failed: {e}")));
+                    }
+                    Err(_) => {
+                        return Err(Error::Other(format!(
+                            "openai request timeout after {}s",
+                            timeout.as_secs()
+                        )));
+                    }
+                }
+            }
+        };
+
+        if cancel::is_cancelled() {
+            return Err(Error::Cancelled("openai request cancelled".into()));
+        }
 
         let status = response.status();
-        let body: Value = response.body_mut().read_json().map_err(|e| {
+        let body_text = tokio::select! {
+            biased;
+            _ = wait_for_cancel() => {
+                return Err(Error::Cancelled("openai request cancelled".into()));
+            }
+            text = response.text() => {
+                text.map_err(|e| Error::Other(format!(
+                    "openai response body read failed (status {status}): {e}"
+                )))?
+            }
+        };
+
+        let body: Value = serde_json::from_str(&body_text).map_err(|e| {
             Error::Other(format!(
                 "openai response parse failed (status {status}): {e}"
             ))
         })?;
 
-        if status.as_u16() >= 400 {
+        if !status.is_success() {
             let message = body
                 .pointer("/error/message")
                 .and_then(|v| v.as_str())
@@ -152,9 +265,21 @@ impl SubModelProvider for OpenAiCompatibleProvider {
     }
 }
 
+impl SubModelProvider for OpenAiCompatibleProvider {
+    fn name(&self) -> &str {
+        "openai"
+    }
+
+    fn invoke(&self, prompt: &str, context: &str) -> Result<ProviderResult> {
+        block_on(self.invoke_async(prompt, context))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rlm::cancel::CancelGuard;
+    use tokio_util::sync::CancellationToken;
 
     #[test]
     fn parses_openai_chat_response() {
@@ -179,5 +304,31 @@ mod tests {
         };
         let cost = provider.estimate_cost(Some(1000), Some(500)).unwrap();
         assert!((cost - 1.25).abs() < 0.001);
+    }
+
+    #[test]
+    fn invoke_async_respects_cancel_before_request() {
+        let token = CancellationToken::new();
+        let _guard = CancelGuard::install(token.clone());
+        token.cancel();
+        let provider = OpenAiCompatibleProvider {
+            api_key: "k".into(),
+            base_url: "https://example.invalid/v1".into(),
+            model: "m".into(),
+            prompt_cost_per_1k: None,
+            completion_cost_per_1k: None,
+        };
+        let err = provider.invoke("p", "c").unwrap_err();
+        assert!(
+            matches!(err, Error::Cancelled(_)) || err.to_string().contains("cancelled"),
+            "unexpected: {err}"
+        );
+    }
+
+    #[test]
+    fn http_timeout_defaults_positive() {
+        std::env::remove_var("RLM_OPENAI_TIMEOUT_SECS");
+        std::env::remove_var("RLM_PROVIDER_MAX_WALL_SECS");
+        assert!(http_timeout().as_secs() >= 30);
     }
 }
