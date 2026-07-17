@@ -4,6 +4,8 @@ use crate::discover::{
 use crate::error::{Error, Result};
 use crate::rlm::config::RlmConfig;
 use std::collections::HashMap;
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
+use std::path::Path;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -137,40 +139,12 @@ impl SessionStore {
                 continue;
             }
 
-            let bytes = match std::fs::read(&file_path) {
-                Ok(b) => b,
-                Err(_) => {
-                    *skip_reasons.entry("unreadable".into()).or_default() += 1;
-                    files_skipped += 1;
-                    continue;
-                }
-            };
-            if super::safety::is_probably_binary(&bytes) {
-                *skip_reasons
-                    .entry("binary_or_unreadable".into())
-                    .or_default() += 1;
-                files_skipped += 1;
-                continue;
-            }
-            let content = match String::from_utf8(bytes) {
-                Ok(c) => c,
-                Err(_) => {
-                    *skip_reasons
-                        .entry("binary_or_unreadable".into())
-                        .or_default() += 1;
-                    files_skipped += 1;
-                    continue;
-                }
-            };
-
-            if language_for_path(&file_path).is_none() && content.len() > 64 * 1024 {
+            // Skip large non-code files before streaming (same threshold as before).
+            if language_for_path(&file_path).is_none() && meta.len() > 64 * 1024 {
                 *skip_reasons.entry("non_code_large".into()).or_default() += 1;
                 files_skipped += 1;
                 continue;
             }
-
-            total_bytes += content.len();
-            files_scanned += 1;
 
             let rel = file_path
                 .strip_prefix(if root.is_file() {
@@ -181,13 +155,29 @@ impl SessionStore {
                 .unwrap_or(&file_path)
                 .to_string_lossy()
                 .replace('\\', "/");
-            append_chunks(
-                &mut chunks,
+
+            match stream_file_into_chunks(
+                &file_path,
                 &rel,
-                &content,
+                &mut chunks,
                 self.config.chunk_lines,
                 self.config.max_chunks,
-            );
+            ) {
+                Ok(bytes_added) => {
+                    total_bytes = total_bytes.saturating_add(bytes_added);
+                    files_scanned += 1;
+                }
+                Err(StreamSkip::BinaryOrUnreadable) => {
+                    *skip_reasons
+                        .entry("binary_or_unreadable".into())
+                        .or_default() += 1;
+                    files_skipped += 1;
+                }
+                Err(StreamSkip::Unreadable) => {
+                    *skip_reasons.entry("unreadable".into()).or_default() += 1;
+                    files_skipped += 1;
+                }
+            }
         }
 
         self.finalize_session(
@@ -439,6 +429,101 @@ pub(crate) fn append_chunks(
     }
 }
 
+/// Result of a streaming path scan for one file.
+enum StreamSkip {
+    BinaryOrUnreadable,
+    Unreadable,
+}
+
+const BINARY_PROBE_BYTES: u64 = 8192;
+
+/// Stream a file into line-window chunks without loading the full file as one `String`.
+///
+/// Probe the first [`BINARY_PROBE_BYTES`] for binary heuristics, then read with
+/// `BufReader` line-by-line. Returns total UTF-8 content bytes counted (joined with `\n`).
+fn stream_file_into_chunks(
+    file_path: &Path,
+    rel_path: &str,
+    chunks: &mut Vec<Chunk>,
+    chunk_lines: usize,
+    max_chunks: usize,
+) -> std::result::Result<usize, StreamSkip> {
+    let mut file = std::fs::File::open(file_path).map_err(|_| StreamSkip::Unreadable)?;
+
+    let mut probe = Vec::new();
+    file.by_ref()
+        .take(BINARY_PROBE_BYTES)
+        .read_to_end(&mut probe)
+        .map_err(|_| StreamSkip::Unreadable)?;
+    if super::safety::is_probably_binary(&probe) {
+        return Err(StreamSkip::BinaryOrUnreadable);
+    }
+    file.seek(SeekFrom::Start(0))
+        .map_err(|_| StreamSkip::Unreadable)?;
+
+    let mut reader = BufReader::new(file);
+    let lines_per_chunk = chunk_lines.max(1);
+    let mut window: Vec<String> = Vec::with_capacity(lines_per_chunk);
+    let mut line_offset = 0usize;
+    let mut total_bytes = 0usize;
+    let mut raw_line = Vec::new();
+
+    loop {
+        raw_line.clear();
+        let n = reader
+            .read_until(b'\n', &mut raw_line)
+            .map_err(|_| StreamSkip::Unreadable)?;
+        if n == 0 {
+            break;
+        }
+        total_bytes = total_bytes.saturating_add(n);
+
+        // Strip trailing newline(s) for line content (matches str::lines()).
+        while raw_line.last().is_some_and(|b| *b == b'\n' || *b == b'\r') {
+            raw_line.pop();
+        }
+        let line = match std::str::from_utf8(&raw_line) {
+            Ok(s) => s.to_string(),
+            Err(_) => return Err(StreamSkip::BinaryOrUnreadable),
+        };
+
+        window.push(line);
+        if window.len() >= lines_per_chunk {
+            if chunks.len() >= max_chunks {
+                // Still count remaining file bytes toward total for parity with
+                // the previous full-read path (content counted even when chunks truncated).
+                let mut rest = Vec::new();
+                if reader.read_to_end(&mut rest).is_ok() {
+                    total_bytes = total_bytes.saturating_add(rest.len());
+                }
+                break;
+            }
+            chunks.push(Chunk {
+                id: String::new(),
+                path: rel_path.to_string(),
+                offset: line_offset,
+                line_count: window.len(),
+                content: window.join("\n"),
+            });
+            line_offset = line_offset.saturating_add(lines_per_chunk);
+            window.clear();
+        }
+    }
+
+    if !window.is_empty() && chunks.len() < max_chunks {
+        chunks.push(Chunk {
+            id: String::new(),
+            path: rel_path.to_string(),
+            offset: line_offset,
+            line_count: window.len(),
+            content: window.join("\n"),
+        });
+    }
+
+    // Empty file: no chunks, zero bytes (same as append_chunks on empty).
+    Ok(total_bytes)
+}
+
 fn assign_chunk_ids(session: &mut ScanSession) {
     for (i, chunk) in session.chunks.iter_mut().enumerate() {
         if chunk.id.is_empty() {
@@ -502,6 +587,109 @@ mod tests {
         assert_eq!(session.source_kind, "text");
         assert!(!session.chunks.is_empty());
         assert_eq!(session.chunks[0].id, "c-0");
+
+        std::env::remove_var("RLM_CACHE_DIR");
+    }
+
+    #[test]
+    fn streaming_scan_matches_append_chunks() {
+        let _guard = test_lock::acquire();
+        let cache = TempDir::new().unwrap();
+        std::env::set_var("RLM_CACHE_DIR", cache.path());
+
+        let dir = TempDir::new().unwrap();
+        let mut body = String::new();
+        for i in 0..450 {
+            body.push_str(&format!("line-{i}\n"));
+        }
+        std::fs::write(dir.path().join("big.txt"), &body).unwrap();
+
+        let mut store = SessionStore::with_config(RlmConfig {
+            chunk_lines: 100,
+            max_chunks: 10_000,
+            max_file_bytes: 10 * 1024 * 1024,
+            max_total_bytes: 20 * 1024 * 1024,
+            max_sessions: 50,
+            session_ttl_secs: 3600,
+        });
+        let session = store
+            .create_from_path(dir.path().to_string_lossy().as_ref())
+            .unwrap();
+
+        let mut expected = Vec::new();
+        append_chunks(&mut expected, "big.txt", &body, 100, 10_000);
+        assert_eq!(session.chunks.len(), expected.len());
+        assert_eq!(session.chunks[0].content, expected[0].content);
+        assert_eq!(
+            session.chunks.last().unwrap().content,
+            expected.last().unwrap().content
+        );
+        assert_eq!(session.total_bytes, body.len());
+
+        std::env::remove_var("RLM_CACHE_DIR");
+    }
+
+    #[test]
+    fn streaming_skips_binary_nul() {
+        let _guard = test_lock::acquire();
+        let cache = TempDir::new().unwrap();
+        std::env::set_var("RLM_CACHE_DIR", cache.path());
+
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("bin.dat"), b"hello\0world").unwrap();
+
+        let mut store = SessionStore::new();
+        let session = store
+            .create_from_path(dir.path().to_string_lossy().as_ref())
+            .unwrap();
+        assert_eq!(session.files_scanned, 0);
+        assert!(session.files_skipped >= 1);
+        assert!(
+            session
+                .skip_reasons
+                .get("binary_or_unreadable")
+                .copied()
+                .unwrap_or(0)
+                >= 1
+                || session
+                    .skip_reasons
+                    .get("binary_or_asset")
+                    .copied()
+                    .unwrap_or(0)
+                    >= 1
+        );
+
+        std::env::remove_var("RLM_CACHE_DIR");
+    }
+
+    #[test]
+    fn concurrent_hydrate_from_disk() {
+        let _guard = test_lock::acquire();
+        let cache = TempDir::new().unwrap();
+        std::env::set_var("RLM_CACHE_DIR", cache.path());
+
+        let mut store = SessionStore::new();
+        let session = store
+            .create_from_text("a\nb\nc\n", "t.txt", HashMap::new())
+            .unwrap();
+        let id = session.id.clone();
+        drop(store);
+
+        let id_for_threads = id.clone();
+        let handles: Vec<_> = (0..4)
+            .map(|_| {
+                let sid = id_for_threads.clone();
+                std::thread::spawn(move || {
+                    let mut s = SessionStore::new();
+                    let loaded = s.get_or_hydrate(&sid).expect("hydrate");
+                    assert_eq!(loaded.chunks.len(), 1);
+                    assert_eq!(loaded.chunks[0].id, "c-0");
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().expect("thread ok");
+        }
 
         std::env::remove_var("RLM_CACHE_DIR");
     }

@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,10 +27,24 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: Tests
         run: cargo test --all-targets
 
       - name: Release build + smoke
+        if: matrix.os == 'ubuntu-latest'
         run: |
           cargo build --release
           cargo test --test release_smoke --release

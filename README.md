@@ -238,6 +238,16 @@ rlm-mcp reduce-schema --json
 rlm-mcp reduce-merge --workers '[{"batch_id":"b0","findings":[]}]' --json
 ```
 
+## Docs
+
+| Doc | Topic |
+|-----|--------|
+| [`docs/rlm-loop.md`](docs/rlm-loop.md) | Load → filter → map → reduce loop |
+| [`docs/security.md`](docs/security.md) | Sandbox, network, path safety |
+| [`docs/extending.md`](docs/extending.md) | Custom providers, transforms, plugins |
+| [`docs/paper-mapping.md`](docs/paper-mapping.md) | Paper ↔ implementation mapping |
+| [`examples/`](examples/) | Agent prompt templates and walkthroughs |
+
 ## Architecture
 
 ```
