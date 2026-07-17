@@ -81,6 +81,37 @@ rlm_workflow(phase="reduce")
 4. Keep `limit` small (3–5 chunks per call)
 5. Reduce to structured JSON before final natural-language answer
 
+## Ranked search (BM25)
+
+For "most relevant" prose/log lines instead of exact matches:
+
+```
+rlm_peek(session_id, query="out of memory", bm25=true, limit=10)
+```
+
+- `bm25=true` ranks lines by relevance; each match returns a `bm25_score`.
+- Requires a `query`; mutually exclusive with `regex`.
+- Use plain substring/`regex` for exact matches (IDs, stack frames).
+
+## Common error modes
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `session not found` | New process, session not hydrated | Reuse the same `session_id`; it persists under `RLM_CACHE_DIR`. Use `rlm_session_list`. |
+| `peek` returns nothing | Wrong `query`/`case_sensitive`, or content skipped | Try `bm25=true`, `ignore-case`, or check `rlm_env_info` `skip_reasons`. |
+| Chunks missing a large file | `file_too_large` / `non_code_large` skip | Raise `RLM_MAX_FILE_BYTES`, or scan the file directly. |
+| `bm25 search requires query` | `bm25=true` without `query` | Provide a `query`. |
+| `bm25 and regex are mutually exclusive` | Both flags set | Pick one search mode. |
+| `BudgetExceeded` | Limits hit | Narrow scope or raise limits via `rlm_budget_configure`; watch `rlm_budget_status` `tail_cost`. |
+| Empty session / all skipped | Binary or oversized inputs | Check `rlm_env_info`; binary files are skipped by design. |
+
+## Prompt templates & worked examples
+
+- Prompt templates: [`examples/agent-prompt-templates.md`](examples/agent-prompt-templates.md)
+- Multi-document research (BM25 + parallel map): [`examples/multi-document-research.md`](examples/multi-document-research.md)
+- Parallel workers: [`examples/parallel-workers.md`](examples/parallel-workers.md)
+- Anti-pattern (why not to stuff context): [`examples/bad-prompt-stuffing.md`](examples/bad-prompt-stuffing.md)
+
 ## Optional: graph tools
 
 If the agent also has **codebase-memory-mcp** enabled, use graph tools directly for symbol-level code search. That is a **separate MCP server** — not part of this RLM skill.
