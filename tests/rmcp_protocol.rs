@@ -55,7 +55,9 @@ async fn typed_router_rejects_invalid_provider_as_invalid_params() {
     });
 
     let client = ().serve(client_transport).await.expect("start rmcp client");
-    let err = client
+    // rmcp 2.x returns a tool error result (is_error) for schema/param failures
+    // rather than a transport-level Err for this path.
+    let result = client
         .call_tool(
             CallToolRequestParams::new("rlm_task_create").with_arguments(arguments(json!({
                 "session_id": "dummy-session",
@@ -64,8 +66,17 @@ async fn typed_router_rejects_invalid_provider_as_invalid_params() {
             }))),
         )
         .await
-        .expect_err("typed Schemars router should reject invalid enum before domain handler");
-    assert!(err.to_string().contains("failed to deserialize parameters"));
+        .expect("call_tool should complete with a tool-level error result");
+    assert_eq!(result.is_error, Some(true));
+    let text = result.content[0]
+        .as_text()
+        .expect("error text")
+        .text
+        .as_str();
+    assert!(
+        text.contains("failed to deserialize parameters") || text.contains("unknown variant"),
+        "unexpected error text: {text}"
+    );
 
     client.cancel().await.expect("cancel client");
     server_task.await.expect("join server task");
@@ -101,10 +112,10 @@ async fn mcp_request_cancellation_bounds_slow_tool_call() {
     client
         .peer()
         .send_notification(ClientNotification::CancelledNotification(
-            CancelledNotification::new(CancelledNotificationParam {
-                request_id,
-                reason: Some("test cancellation".into()),
-            }),
+            CancelledNotification::new(CancelledNotificationParam::new(
+                Some(request_id),
+                Some("test cancellation".into()),
+            )),
         ))
         .await
         .expect("send cancellation notification");

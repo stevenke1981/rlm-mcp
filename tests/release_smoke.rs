@@ -35,7 +35,13 @@ fn run_json(bin: &str, args: &[&str]) -> Value {
 
 fn sha256_hex(path: &PathBuf) -> String {
     let bytes = std::fs::read(path).expect("read binary");
-    format!("{:x}", Sha256::digest(bytes))
+    // sha2 0.11 returns hybrid-array; format via byte slice.
+    let digest = Sha256::digest(bytes);
+    digest
+        .as_slice()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 fn write_mcp_frame(writer: &mut impl Write, body: &str) {

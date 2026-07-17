@@ -119,20 +119,21 @@ impl SubModelProvider for OpenAiCompatibleProvider {
             ]
         });
 
-        let response = ureq::post(&url)
-            .set("Authorization", &format!("Bearer {}", self.api_key))
-            .set("Content-Type", "application/json")
-            .send_json(request_body)
+        // ureq 3.x: `.header` + `send_json` + `body_mut().read_json`
+        let mut response = ureq::post(&url)
+            .header("Authorization", &format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .send_json(&request_body)
             .map_err(|e| Error::Other(format!("openai request failed: {e}")))?;
 
         let status = response.status();
-        let body: Value = response.into_json().map_err(|e| {
+        let body: Value = response.body_mut().read_json().map_err(|e| {
             Error::Other(format!(
                 "openai response parse failed (status {status}): {e}"
             ))
         })?;
 
-        if status >= 400 {
+        if status.as_u16() >= 400 {
             let message = body
                 .pointer("/error/message")
                 .and_then(|v| v.as_str())

@@ -3,7 +3,7 @@ use crate::mcp::params::*;
 use crate::mcp::tools::ToolHandler;
 use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
 use rmcp::model::{
-    CallToolResult, Content, Implementation, ListToolsResult, PaginatedRequestParams,
+    CallToolResult, ContentBlock, Implementation, ListToolsResult, PaginatedRequestParams,
     ServerCapabilities, ServerInfo, Tool,
 };
 use rmcp::service::{RequestContext, RoleServer};
@@ -66,7 +66,7 @@ impl McpServer {
             joined = result => {
                 Ok(match joined {
                     Ok(Ok(value)) => match serde_json::to_string_pretty(&value) {
-                        Ok(text) => CallToolResult::success(vec![Content::text(text)]),
+                        Ok(text) => CallToolResult::success(vec![ContentBlock::text(text)]),
                         Err(error) => tool_error(format!("failed to encode tool result: {error}")),
                     },
                     Ok(Err(error)) => tool_error(error.to_string()),
@@ -594,7 +594,7 @@ fn normalize_json_schema_node(value: &mut Value) {
 }
 
 fn tool_error(message: impl Into<String>) -> CallToolResult {
-    CallToolResult::error(vec![Content::text(message.into())])
+    CallToolResult::error(vec![ContentBlock::text(message.into())])
 }
 
 impl Default for McpServer {

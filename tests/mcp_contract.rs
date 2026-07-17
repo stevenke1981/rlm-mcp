@@ -18,7 +18,6 @@ fn arguments(value: Value) -> Map<String, Value> {
 
 fn text_json(result: &rmcp::model::CallToolResult) -> Value {
     let text = result.content[0]
-        .raw
         .as_text()
         .expect("text tool result")
         .text
