@@ -83,6 +83,9 @@ rlm_workflow(phase="reduce")
 
 ## Ranked search (BM25)
 
+Offline harness baseline `retrieval_peek` uses `bm25=true` (not bare substring).
+See `docs/benchmarks.md` for paper baseline mapping (retrieval/BM25 vs CodeAct+BM25).
+
 For "most relevant" prose/log lines instead of exact matches:
 
 ```

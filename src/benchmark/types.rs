@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+/// Offline harness baselines (paper-aligned names).
+///
+/// `RetrievalPeek` maps to the paper’s lightweight **retrieval / BM25** idea:
+/// every suite’s `run_retrieval_peek` uses `rlm_peek` with `bm25=true` and
+/// `include_content=false` (model-visible evidence = match previews).
+/// It is **not** the paper’s **CodeAct + BM25** agent (executable loop).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BaselineKind {

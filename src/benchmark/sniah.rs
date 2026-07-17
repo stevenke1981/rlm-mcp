@@ -227,6 +227,7 @@ fn run_retrieval_peek(
     )?;
     let session_id = scan["session_id"].as_str().unwrap().to_string();
 
+    // Paper-aligned retrieval/BM25 agent: ranked peek, previews only (not full chunks).
     let peek = engine.peek(
         &session_id,
         PeekOptions {
@@ -238,6 +239,11 @@ fn run_retrieval_peek(
             ..Default::default()
         },
     )?;
+    debug_assert_eq!(
+        peek.get("search_mode").and_then(|v| v.as_str()),
+        Some("bm25"),
+        "retrieval_peek must use BM25 (docs/benchmarks.md)"
+    );
 
     let evidence = peek_matches_text(&peek);
     let answer = extract_needle_value(&evidence, &fixture.needle_key).unwrap_or_default();

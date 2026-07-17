@@ -120,11 +120,23 @@ All five map to `BaselineKind` in `src/benchmark/types.rs`:
 |-------------|-------------------|---------------------|
 | `direct_full_context` | Paste full haystack into model context | Correct; highest `bytes_in` |
 | `summary_compaction` | Read first/last ~10% of lines only | **Incorrect** (misses buried needle) |
-| `retrieval_peek` | `rlm_scan` + `rlm_peek` (substring, no full chunk body) | Correct; lower `bytes_in` than direct |
+| `retrieval_peek` | `rlm_scan` + `rlm_peek` with **`bm25=true`**, `include_content=false` | Correct; lower `bytes_in` than direct |
 | `rlm_no_subcalls` | Filter → `rlm_chunk` → `rlm_reduce_merge` | Correct |
 | `rlm_with_subcalls` | Above + `rlm_task_create` with `mock` provider | Correct; `sub_call_count > 0` |
 
-**Note:** `retrieval_peek` approximates paper retrieval/BM25 via substring peek — not a true BM25 index (see [`limitations.md`](limitations.md)).
+### `retrieval_peek` vs paper “retrieval / BM25” and CodeAct+BM25
+
+| | Paper idea | rlm-mcp today |
+|--|------------|----------------|
+| **Retrieval / BM25 agent** | Rank corpus snippets, feed top-k to the model | **`retrieval_peek`**: all suites call `rlm_peek(..., bm25=true, include_content=false)`. Evidence = match **previews** (and optional context radius), not full chunk bodies. Index is session BM25 (`src/rlm/bm25.rs` + persisted line index in `bm25_index.rs`). |
+| **CodeAct + BM25** | Executable code-act loop + BM25 retrieval as a baseline agent | **Not replicated** as a separate harness baseline. Executable REPL is opt-in (`rlm_repl_execute`); default path stays tool-based RLM, not CodeAct. |
+
+**Source of truth in code** (all suites use BM25, not bare substring):
+
+- `src/benchmark/sniah.rs` → `run_retrieval_peek` notes `"BM25 retrieval via rlm_peek --bm25"`
+- Same pattern: `oolong.rs`, `codeqa.rs`, `browsecomp.rs`, `oolong_pairs.rs`
+
+**Cost metric:** `bytes_in` is **model-visible evidence** (peek previews), not session `total_bytes` after scan (Lesson #5).
 
 ---
 
@@ -226,10 +238,10 @@ Assertions in `sniah_mini_suite_runs_all_baselines`:
 
 ### Claims the mini-suite does *not* fully prove
 
-- All five offline suites: S-NIAH, OOLONG, CodeQA, BrowseComp-Plus, OOLONG-Pairs (`mini` in CI).
-- True BM25 / CodeAct baselines from the paper.
-- Live model quality across providers (only `mock` in harness).
+- **CodeAct + BM25** as a full paper-style executable retrieval agent (only tool-based BM25 peek is shipped).
+- Live model quality across providers (harness uses `mock` for sub-calls; openai is opt-in outside the mini suite).
 - Large-scale tail latency distributions (use `large` / `nightly` + budget/trajectory tools).
+- Semantic / embedding retrieval (see [`embedding-roadmap.md`](embedding-roadmap.md)).
 
 ---
 

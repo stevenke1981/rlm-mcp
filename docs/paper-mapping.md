@@ -65,7 +65,7 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 | Narrow large corpus before full read | `rlm_peek` with `query`, `path`, `glob`, `regex`, line range, context radius, `limit` | **Done** | `src/rlm/filter.rs`, e2e peek |
 | Structured small previews | Match `preview`, `chunk_id`, counts in peek response | **Done** | benchmark uses model-visible peek bytes |
 | Result IDs for map phase | `chunk_id` / match IDs in peek output | **Done** | `rlm_map_plan` accepts peek-derived IDs |
-| BM25 / token retrieval | `rlm_peek` with `bm25: true` (`src/rlm/bm25.rs`) | **Done** | `src/rlm/filter.rs` tests; S-NIAH `retrieval_peek` baseline |
+| BM25 / token retrieval | `rlm_peek` with `bm25: true` (`src/rlm/bm25.rs`, `bm25_index.rs`) | **Done** | Filter unit tests; all harness suites’ `retrieval_peek` set `bm25=true` |
 | File/chunk summaries | Peek metadata + `rlm_env_info` file rollups | **Partial** | No separate LLM summary tool |
 
 **Acceptance:** 10M+ token sessions can be narrowed without reading every chunk.
@@ -142,13 +142,15 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 
 | Paper baseline | `BaselineKind` in `src/benchmark/types.rs` | Status |
 |----------------|--------------------------------------------|--------|
-| Direct long-context call | `direct_full_context` | **Done** (S-NIAH) |
-| Summary / compaction agent | `summary_compaction` | **Done** (heuristic compaction in harness) |
-| Retrieval / BM25 agent | `retrieval_peek` | **Partial** (peek-based, not BM25 index) |
+| Direct long-context call | `direct_full_context` | **Done** (all offline suites) |
+| Summary / compaction agent | `summary_compaction` | **Done** (heuristic head/tail compaction in harness) |
+| Retrieval / BM25 agent | `retrieval_peek` | **Done** — `rlm_scan` + `rlm_peek(bm25=true, include_content=false)`; evidence = previews only |
 | RLM without sub-calls | `rlm_no_subcalls` | **Done** |
-| RLM with sub-calls | `rlm_with_subcalls` | **Done** |
-| CodeAct + BM25 | — | **Planned** (needs REPL + BM25) |
-| RLM REPL (paper native) | — | **Differs** (tool-based loop) |
+| RLM with sub-calls | `rlm_with_subcalls` | **Done** (`mock` provider in CI) |
+| CodeAct + BM25 | — | **Differs / not shipped** — would need a CodeAct-style executable agent; BM25 alone is already in `retrieval_peek` |
+| RLM REPL (paper native) | — | **Differs** (MCP tool-based loop; safe transforms default) |
+
+Detail: [`docs/benchmarks.md`](benchmarks.md#retrieval_peek-vs-paper-retrieval--bm25-and-codeactbm25).
 
 Metrics recorded: accuracy, `bytes_in` / `bytes_out` (model-visible), `tokens_est`, `runtime_ms`, `trajectory_events`, `sub_call_count`.
 
