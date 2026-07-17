@@ -145,6 +145,27 @@ cargo build --release
 ./scripts/package-release.sh
 ```
 
+### Docker
+
+rlm-mcp can be built and run as a Docker container for isolated deployments:
+
+```bash
+# Build
+docker build -t rlm-mcp .
+
+# Run in MCP stdio mode (for agent integration)
+echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | docker run -i rlm-mcp
+
+# Run CLI command
+docker run -i rlm-mcp workflow --json
+
+# With persistent cache and custom scripts
+docker compose up -d
+```
+
+See `docker-compose.yml` for a full configuration including cache volumes,
+resource limits, and sandboxed command provider mounts.
+
 ## Environment
 
 | Variable | Default | Purpose |
@@ -163,7 +184,10 @@ cargo build --release
 | `RLM_OPENAI_MODEL` | `gpt-4o-mini` | Model name for sub-calls |
 | `RLM_PROVIDER_COMMAND` | — | Executable for `command` provider |
 | `RLM_PROVIDER_ARGS` | `[]` | JSON array or whitespace-separated args |
+| `RLM_PROVIDER_SANDBOX` | `warn` | Sandbox mode: `strict`, `warn`, or `off` (see [security](docs/security.md)) |
+| `RLM_PROVIDER_ALLOWED_DIRS` | — | Semicolon-separated allowed directories (strict mode) |
 | `RLM_PROVIDER_MAX_RETRIES` | `3` | Provider retry attempts |
+| `RLM_PROVIDER_RETRY_DELAY_MS` | `200` | Base delay between retries (exponential backoff) |
 | `RLM_OPENAI_PROMPT_COST_PER_1K` | — | Optional USD/1K prompt tokens for cost est. |
 | `RLM_OPENAI_COMPLETION_COST_PER_1K` | — | Optional USD/1K completion tokens |
 

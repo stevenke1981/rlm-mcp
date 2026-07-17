@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  rlm-mcp:
+    build: .
+    image: rlm-mcp:latest
+    container_name: rlm-mcp
+    stdin_open: true
+    tty: true
+    environment:
+      # Session cache
+      RLM_CACHE_DIR: /data/cache
+      # Sandbox: restrict command provider
+      RLM_PROVIDER_SANDBOX: "strict"
+      RLM_PROVIDER_ALLOWED_DIRS: "/opt/scripts"
+      # Network (opt-in for OpenAI provider)
+      RLM_ALLOW_NETWORK: "0"
+      # RLM_OPENAI_API_KEY: sk-...   # set via .env file
+      # RLM_OPENAI_BASE_URL: https://api.openai.com/v1
+    volumes:
+      - rlm-data:/data
+      # Mount scripts for command provider:
+      # - ./scripts:/opt/scripts:ro
+      # Mount files to scan:
+      # - ./logs:/logs:ro
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    restart: unless-stopped
+
+volumes:
+  rlm-data:

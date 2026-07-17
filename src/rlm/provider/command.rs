@@ -1,3 +1,4 @@
+use super::sandbox::{validate_command, SandboxMode};
 use super::{ProviderResult, SubModelProvider};
 use crate::error::{Error, Result};
 use serde_json::{json, Value};
@@ -6,6 +7,7 @@ use std::process::{Command, Stdio};
 pub struct CommandProvider {
     program: String,
     args: Vec<String>,
+    sandbox_mode: SandboxMode,
 }
 
 impl CommandProvider {
@@ -19,7 +21,12 @@ impl CommandProvider {
             .ok()
             .map(parse_args)
             .unwrap_or_default();
-        Ok(Self { program, args })
+        let sandbox_mode = SandboxMode::from_env();
+        Ok(Self {
+            program,
+            args,
+            sandbox_mode,
+        })
     }
 
     #[cfg(test)]
@@ -27,6 +34,7 @@ impl CommandProvider {
         Self {
             program: program.into(),
             args,
+            sandbox_mode: SandboxMode::Off,
         }
     }
 }
@@ -44,6 +52,9 @@ impl SubModelProvider for CommandProvider {
     }
 
     fn invoke(&self, prompt: &str, context: &str) -> Result<ProviderResult> {
+        // Apply sandbox validation before executing the command
+        validate_command(&self.program, self.sandbox_mode)?;
+
         let payload = json!({ "prompt": prompt, "context": context });
         let mut child = Command::new(&self.program)
             .args(&self.args)

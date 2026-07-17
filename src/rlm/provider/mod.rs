@@ -1,6 +1,7 @@
 mod command;
 mod openai;
 mod retry;
+mod sandbox;
 
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};

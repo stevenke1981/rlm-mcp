@@ -34,3 +34,21 @@ jobs:
         run: |
           cargo build --release
           cargo test --test release_smoke --release
+
+  docker:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: rlm-mcp:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -17,3 +17,8 @@ build/
 .opencode/tantivy/
 .opencode/vectors.*
 .opencode/*.db
+.opencode/memory/
+.opencode/status-footer/
+
+# local project analysis
+rlm-mcp-project-analysis-and-optimization-suggestions.md
