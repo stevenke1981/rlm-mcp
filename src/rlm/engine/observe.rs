@@ -20,13 +20,14 @@ impl RlmEngine {
         redact_patterns: &[String],
     ) -> Result<Value> {
         self.trajectory
-            .lock()
-            .unwrap()
             .get(session_id, format, redact, redact_patterns)
     }
 
     pub fn budget_configure(&self, config: SessionBudget) -> Result<Value> {
-        self.budgets.lock().unwrap().configure(config.clone())?;
+        self.budgets
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .configure(config.clone())?;
         Ok(json!({
             "session_id": config.session_id,
             "mode": config.mode,
@@ -35,12 +36,13 @@ impl RlmEngine {
     }
 
     pub fn budget_status(&self, session_id: &str) -> Value {
-        let traj = self.trajectory.lock().unwrap().run(session_id);
-        let tasks = self.tasks.lock().unwrap();
+        // Trajectory clone does not block other sessions' record paths.
+        let traj = self.trajectory.run(session_id);
+        let tasks = self.tasks.lock().unwrap_or_else(|e| e.into_inner());
         let tree_refs = tasks.trees_for_session(session_id);
         self.budgets
             .lock()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .status_report(session_id, traj.as_ref(), &tree_refs)
     }
 

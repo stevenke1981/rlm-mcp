@@ -108,7 +108,8 @@ These are **design choices**, not bugs:
 | Chunk body storage | Lazy on-disk under `rlm-chunks/` (session JSON is metadata-only); see [`lazy-chunk-store.md`](lazy-chunk-store.md) |
 | Semantic / embedding peek | Not shipped; use BM25; roadmap in [`embedding-roadmap.md`](embedding-roadmap.md) |
 | Binary / oversized files | Skipped with `skip_reasons` in scan metadata |
-| Concurrent writers | Per-session lock; readers use `get_or_hydrate` |
+| Concurrent writers | Session map `RwLock` (writers exclusive); trajectory per-session mutex |
+| Concurrent readers | Peek/chunk snapshot session metadata then I/O without holding store lock |
 | Cross-process reads | Sessions on disk under `RLM_CACHE_DIR` |
 
 ---

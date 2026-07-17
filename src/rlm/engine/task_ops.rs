@@ -24,20 +24,26 @@ impl RlmEngine {
         let started = Instant::now();
         let est_tokens = (prompt.len() + chunk_ids.len() * 64) as u64 / 4;
         let budget_eval = self.ensure_session_budget(session_id, 0, 1, est_tokens)?;
-        let mut sessions = self.sessions.lock().unwrap();
-        sessions.hydrate(session_id)?;
-        let mut tasks = self.tasks.lock().unwrap();
-        let result = tasks.create(
-            &sessions,
-            session_id,
-            prompt,
-            chunk_ids,
-            parent_task_id,
-            provider,
-            budget,
-            budget_mode,
-            execute,
-        );
+        // Hydrate under write, create under short read+tasks locks, then release before trajectory.
+        {
+            let mut sessions = self.sessions.write().unwrap_or_else(|e| e.into_inner());
+            sessions.hydrate(session_id)?;
+        }
+        let result = {
+            let sessions = self.sessions.read().unwrap_or_else(|e| e.into_inner());
+            let mut tasks = self.tasks.lock().unwrap_or_else(|e| e.into_inner());
+            tasks.create(
+                &sessions,
+                session_id,
+                prompt,
+                chunk_ids,
+                parent_task_id,
+                provider,
+                budget,
+                budget_mode,
+                execute,
+            )
+        };
         match result {
             Ok((task, provider_result)) => {
                 let mut out = json!({

@@ -24,7 +24,7 @@ impl RlmEngine {
         variable_name: Option<&str>,
     ) -> Result<Value> {
         let started = Instant::now();
-        let mut store = self.sessions.lock().unwrap();
+        let mut store = self.sessions.write().unwrap_or_else(|e| e.into_inner());
         let session = match (path, content) {
             (Some(p), None) | (Some(p), Some(_)) => store.create_from_path(p)?,
             (None, Some(text)) => {
@@ -74,9 +74,8 @@ impl RlmEngine {
 
     pub fn env_info(&self, session_id: &str) -> Result<Value> {
         let started = Instant::now();
-        let mut store = self.sessions.lock().unwrap();
-        let session = store.get_or_hydrate(session_id)?;
-        let mut out = env::env_info(session);
+        let session = self.session_snapshot(session_id)?;
+        let mut out = env::env_info(&session);
         if let Some(obj) = out.as_object_mut() {
             obj.insert("repl".into(), repl::list_backends());
         }
@@ -104,8 +103,13 @@ impl RlmEngine {
         end_line: usize,
     ) -> Result<Value> {
         let started = Instant::now();
-        let mut store = self.sessions.lock().unwrap();
-        let chunk = store.get_chunk(session_id, chunk_id)?.clone();
+        let session = self.session_snapshot(session_id)?;
+        let chunk = session
+            .chunks
+            .iter()
+            .find(|c| c.id == chunk_id)
+            .ok_or_else(|| Error::InvalidArgument(format!("chunk not found: {chunk_id}")))?
+            .clone();
         let body = SessionStore::resolve_chunk_content(session_id, &chunk)?;
         let out = env::slice_chunk(&chunk, &body, start_line, end_line);
         self.record(
@@ -144,9 +148,13 @@ impl RlmEngine {
                 .ok_or_else(|| Error::Other("artifact read missing content".into()));
         }
         if let Some(id) = chunk_id {
-            let mut store = self.sessions.lock().unwrap();
-            let chunk = store.get_chunk(session_id, id)?.clone();
-            return SessionStore::resolve_chunk_content(session_id, &chunk);
+            let session = self.session_snapshot(session_id)?;
+            let chunk = session
+                .chunks
+                .iter()
+                .find(|c| c.id == id)
+                .ok_or_else(|| Error::InvalidArgument(format!("chunk not found: {id}")))?;
+            return SessionStore::resolve_chunk_content(session_id, chunk);
         }
         Err(Error::InvalidArgument(
             "provide content, artifact_name, or chunk_id".into(),
@@ -259,9 +267,13 @@ impl RlmEngine {
         let body = if let Some(text) = content {
             text.to_string()
         } else if let Some(chunk_id) = source_chunk_id {
-            let mut store = self.sessions.lock().unwrap();
-            let chunk = store.get_chunk(session_id, chunk_id)?.clone();
-            SessionStore::resolve_chunk_content(session_id, &chunk)?
+            let session = self.session_snapshot(session_id)?;
+            let chunk = session
+                .chunks
+                .iter()
+                .find(|c| c.id == chunk_id)
+                .ok_or_else(|| Error::InvalidArgument(format!("chunk not found: {chunk_id}")))?;
+            SessionStore::resolve_chunk_content(session_id, chunk)?
         } else {
             return Err(Error::InvalidArgument(
                 "provide content or source_chunk_id".into(),
@@ -322,8 +334,8 @@ impl RlmEngine {
     ) -> Result<Value> {
         let started = Instant::now();
         let budget_eval = self.ensure_session_budget(session_id, limit as u64, 0, 0)?;
-        let mut store = self.sessions.lock().unwrap();
-        let session = store.get_or_hydrate(session_id)?;
+        // Snapshot releases the store lock before body I/O — concurrent chunk readers.
+        let session = self.session_snapshot(session_id)?;
         let filtered: Vec<_> = session
             .chunks
             .iter()
@@ -396,9 +408,8 @@ impl RlmEngine {
     pub fn peek(&self, session_id: &str, opts: PeekOptions<'_>) -> Result<Value> {
         let started = Instant::now();
         let query_len = opts.query.map(|q| q.len()).unwrap_or(0);
-        let mut store = self.sessions.lock().unwrap();
-        let session = store.get_or_hydrate(session_id)?;
-        let out = filter::peek_session(session, opts);
+        let session = self.session_snapshot(session_id)?;
+        let out = filter::peek_session(&session, opts);
         self.record(
             session_id,
             "peek",
@@ -417,17 +428,24 @@ impl RlmEngine {
     }
 
     pub fn session_list(&self) -> Value {
-        let store = self.sessions.lock().unwrap();
+        let store = self.sessions.read().unwrap_or_else(|e| e.into_inner());
         json!({ "sessions": store.list() })
     }
 
     pub fn session_delete(&self, session_id: &str) -> Result<Value> {
-        self.sessions.lock().unwrap().delete(session_id)?;
+        self.sessions
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .delete(session_id)?;
         Ok(json!({ "session_id": session_id, "deleted": true }))
     }
 
     pub fn session_cleanup(&self) -> Result<Value> {
-        let report = self.sessions.lock().unwrap().cleanup_expired()?;
+        let report = self
+            .sessions
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .cleanup_expired()?;
         Ok(json!({
             "removed_count": report.removed_count,
             "removed_ids": report.removed_ids,
@@ -435,7 +453,11 @@ impl RlmEngine {
     }
 
     pub fn session_export(&self, session_id: &str) -> Result<Value> {
-        let session = self.sessions.lock().unwrap().export(session_id)?;
+        let session = self
+            .sessions
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .export(session_id)?;
         Ok(json!({
             "session_id": session.id,
             "revision": session.revision,
@@ -446,8 +468,8 @@ impl RlmEngine {
     pub fn session_import(&self, session: ScanSession, preserve_id: bool) -> Result<Value> {
         let imported = self
             .sessions
-            .lock()
-            .unwrap()
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
             .import_session(session, preserve_id)?;
         Ok(json!({
             "session_id": imported.id,

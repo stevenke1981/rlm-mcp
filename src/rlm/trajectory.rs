@@ -1,10 +1,19 @@
+//! Trajectory event log with **per-session** fine-grained locking.
+//!
+//! - Outer [`RwLock`] only protects the session→handle map (short holds).
+//! - Each session has its own [`Mutex`] so concurrent `record`/`get` on
+//!   **different** sessions never block each other.
+//! - Disk append runs under the session mutex only (not a global store lock).
+
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrajectoryEvent {
     pub seq: u64,
@@ -25,8 +34,11 @@ pub struct TrajectoryRun {
     pub started_at_unix: u64,
 }
 
+type SessionHandle = Arc<Mutex<TrajectoryRun>>;
+
+/// Interior-mutable trajectory store (safe to share via `Arc` without outer mutex).
 pub struct TrajectoryStore {
-    runs: HashMap<String, TrajectoryRun>,
+    runs: RwLock<HashMap<String, SessionHandle>>,
 }
 
 impl TrajectoryStore {
@@ -34,15 +46,43 @@ impl TrajectoryStore {
         let mut runs = HashMap::new();
         if let Ok(loaded) = load_all_runs() {
             for run in loaded {
-                runs.insert(run.session_id.clone(), run);
+                runs.insert(run.session_id.clone(), Arc::new(Mutex::new(run)));
             }
         }
-        Self { runs }
+        Self {
+            runs: RwLock::new(runs),
+        }
+    }
+
+    /// Get or create the per-session handle. Map write lock is held only when inserting.
+    fn handle_for(&self, session_id: &str) -> SessionHandle {
+        if let Ok(map) = self.runs.read() {
+            if let Some(h) = map.get(session_id) {
+                return Arc::clone(h);
+            }
+        }
+        let mut map = self.runs.write().unwrap_or_else(|e| e.into_inner());
+        map.entry(session_id.to_string())
+            .or_insert_with(|| {
+                Arc::new(Mutex::new(TrajectoryRun {
+                    session_id: session_id.to_string(),
+                    events: Vec::new(),
+                    started_at_unix: unix_now(),
+                }))
+            })
+            .clone()
+    }
+
+    fn handle_existing(&self, session_id: &str) -> Option<SessionHandle> {
+        self.runs
+            .read()
+            .ok()
+            .and_then(|map| map.get(session_id).cloned())
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn record(
-        &mut self,
+        &self,
         session_id: &str,
         event_type: &str,
         task_id: Option<&str>,
@@ -51,14 +91,8 @@ impl TrajectoryStore {
         bytes_out: usize,
         started: Instant,
     ) {
-        let run = self
-            .runs
-            .entry(session_id.to_string())
-            .or_insert_with(|| TrajectoryRun {
-                session_id: session_id.to_string(),
-                events: Vec::new(),
-                started_at_unix: unix_now(),
-            });
+        let handle = self.handle_for(session_id);
+        let mut run = handle.lock().unwrap_or_else(|e| e.into_inner());
         let seq = run.events.len() as u64 + 1;
         run.events.push(TrajectoryEvent {
             seq,
@@ -75,7 +109,9 @@ impl TrajectoryStore {
     }
 
     pub fn run(&self, session_id: &str) -> Option<TrajectoryRun> {
-        self.runs.get(session_id).cloned()
+        let handle = self.handle_existing(session_id)?;
+        let run = handle.lock().unwrap_or_else(|e| e.into_inner());
+        Some(run.clone())
     }
 
     pub fn get(
@@ -85,9 +121,10 @@ impl TrajectoryStore {
         redact: bool,
         redact_patterns: &[String],
     ) -> Result<Value> {
-        let run = self.runs.get(session_id).ok_or_else(|| {
+        let handle = self.handle_existing(session_id).ok_or_else(|| {
             crate::error::Error::InvalidArgument(format!("no trajectory for session: {session_id}"))
         })?;
+        let run = handle.lock().unwrap_or_else(|e| e.into_inner());
 
         let events: Vec<Value> = run
             .events
@@ -101,7 +138,7 @@ impl TrajectoryStore {
             })
             .collect();
 
-        let summary = summarize_run(run);
+        let summary = summarize_run(&run);
 
         match format {
             "jsonl" => {
@@ -337,6 +374,7 @@ pub fn detail_size(v: &Value) -> usize {
 mod tests {
     use super::*;
     use crate::test_lock;
+    use std::sync::Arc;
     use tempfile::TempDir;
 
     #[test]
@@ -345,7 +383,7 @@ mod tests {
         let cache = TempDir::new().unwrap();
         std::env::set_var("RLM_CACHE_DIR", cache.path());
 
-        let mut store = TrajectoryStore::new();
+        let store = TrajectoryStore::new();
         let started = Instant::now();
         store.record(
             "sess-1",
@@ -369,6 +407,40 @@ mod tests {
         let out = store.get("sess-1", "json", true, &[]).unwrap();
         assert_eq!(out["summary"]["event_count"].as_u64().unwrap(), 2);
         assert_eq!(out["summary"]["by_type"]["scan"].as_u64().unwrap(), 1);
+
+        std::env::remove_var("RLM_CACHE_DIR");
+    }
+
+    #[test]
+    fn concurrent_records_across_sessions() {
+        let _guard = test_lock::acquire();
+        let cache = TempDir::new().unwrap();
+        std::env::set_var("RLM_CACHE_DIR", cache.path());
+
+        let store = Arc::new(TrajectoryStore::new());
+        let mut handles = Vec::new();
+        for i in 0..8 {
+            let s = Arc::clone(&store);
+            handles.push(std::thread::spawn(move || {
+                let sid = format!("sess-concurrent-{i}");
+                for j in 0..20 {
+                    s.record(
+                        &sid,
+                        "peek",
+                        None,
+                        json!({ "i": i, "j": j }),
+                        1,
+                        1,
+                        Instant::now(),
+                    );
+                }
+                s.get(&sid, "json", false, &[]).unwrap()
+            }));
+        }
+        for h in handles {
+            let out = h.join().unwrap();
+            assert_eq!(out["summary"]["event_count"].as_u64().unwrap(), 20);
+        }
 
         std::env::remove_var("RLM_CACHE_DIR");
     }

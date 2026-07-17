@@ -18,9 +18,8 @@ impl RlmEngine {
         batch_size: usize,
     ) -> Result<Value> {
         let started = Instant::now();
-        let mut store = self.sessions.lock().unwrap();
-        let session = store.get_or_hydrate(session_id)?;
-        let mut out = map::map_plan(session, chunk_ids, file_pattern, batch_size);
+        let session = self.session_snapshot(session_id)?;
+        let mut out = map::map_plan(&session, chunk_ids, file_pattern, batch_size);
         let batches = out
             .get("batches")
             .and_then(|b| b.as_array())

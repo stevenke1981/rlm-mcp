@@ -20,7 +20,7 @@
 | P1 | workflow triage 建議 | **Done**（本 PR） |
 | P1 | 拆分 `RlmEngine` 上帝物件 | **Done**（本 PR） |
 | P1 | BM25 索引持久化 | **Done**（本 PR） |
-| P1 | 更細的 session/trajectory 鎖 | Planned |
+| P1 | 更細的 session/trajectory 鎖 | **Done**（本 PR） |
 | P2 | BrowseComp / OOLONG-Pairs mini fixtures | **Done**（本 PR） |
 | P2 | async HTTP provider（reqwest feature） | Planned |
 | P2 | semantic embedding peek（optional feature） | Deferred — see [embedding-roadmap.md](embedding-roadmap.md) |
@@ -94,10 +94,11 @@ Public path unchanged: `rlm_mcp::rlm::RlmEngine`.
 - 查詢走 inverted postings；top-k 才 resolve chunk（context radius / include_content）
 - 回傳 `index_hit` / `index_source` / `index_revision` / `lines_indexed` / `bytes_scanned`
 
-### 4.3 併發鎖
+### 4.3 併發鎖 — **Done**
 
-- trajectory 專用鎖，避免擋 map readers
-- session 讀多寫少用 `RwLock` 或強化 per-session 鎖
+- **Trajectory:** per-session `Mutex` + outer map `RwLock`；不同 session 的 `record`/`get` 互不阻塞；`RlmEngine` 直接 `Arc<TrajectoryStore>`（無外層 mutex）
+- **Sessions:** `RwLock<SessionStore>`；`session_snapshot` 先 shared-read，miss 才 write hydrate；peek/chunk/map 在釋放 store 鎖後做 body I/O
+- 測試：`tests/concurrent_access.rs`、`trajectory::concurrent_records_across_sessions`
 
 ### 4.4 workflow triage
 
@@ -148,6 +149,6 @@ cargo test write_tools_snapshot -- --ignored
 
 1. 讀本文件與 [limitations.md](limitations.md)
 2. 不要重做「已完成」列
-3. 下一刀優先：**trajectory 細鎖 / 併發讀** 或 async HTTP provider
+3. 下一刀優先：**async HTTP provider** 或 retrieval baseline 文件對齊
 4. 任何 tool schema 變更必須同步 snapshot
 5. 取消路徑必須 kill 子行程並回 `Cancelled` / `isError`
