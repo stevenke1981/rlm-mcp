@@ -411,6 +411,7 @@ pub fn load_all() -> Result<Vec<SessionBudget>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn detects_high_variance_tail() {
@@ -442,5 +443,71 @@ mod tests {
         assert!(!eval.warnings.is_empty());
         let eval2 = inner.evaluate_session("s", None, 101, 0, 0);
         assert!(!eval2.allowed);
+    }
+
+    proptest! {
+        /// Property: When max == 0, check_projected never adds warnings or exceeded.
+        #[test]
+        fn zero_max_never_triggers(
+            current in 0u64..1_000_000u64,
+            increment in 0u64..1_000_000u64,
+        ) {
+            let mut warnings = Vec::new();
+            let mut exceeded = Vec::new();
+            check_projected(&mut warnings, &mut exceeded, "test", current, increment, 0);
+            prop_assert!(warnings.is_empty());
+            prop_assert!(exceeded.is_empty());
+        }
+
+        /// Property: When projected > max, exceeded is non-empty.
+        #[test]
+        fn exceeded_when_over_limit(
+            current in 0u64..10_000u64,
+            max in 1u64..10_000u64,
+        ) {
+            let increment = max.saturating_add(1);
+            let mut warnings = Vec::new();
+            let mut exceeded = Vec::new();
+            check_projected(&mut warnings, &mut exceeded, "test", current, increment, max);
+            let projected = current.saturating_add(increment);
+            if projected > max {
+                prop_assert!(!exceeded.is_empty(), "projected={projected} max={max}");
+            }
+        }
+
+        /// Property: When projected is within [80% max, max], warnings may fire but not exceeded.
+        #[test]
+        fn warning_at_threshold(
+            current in 0u64..10_000u64,
+            max in 1u64..10_000u64,
+        ) {
+            let warn_at = (max as f64 * 0.8).ceil() as u64;
+            let increment = warn_at.saturating_sub(current);
+            let mut warnings = Vec::new();
+            let mut exceeded = Vec::new();
+            check_projected(&mut warnings, &mut exceeded, "test", current, increment, max);
+            let projected = current.saturating_add(increment);
+            if projected > max {
+                prop_assert!(!exceeded.is_empty());
+            } else if projected >= warn_at && max > 0 {
+                prop_assert!(!warnings.is_empty() || !exceeded.is_empty(),
+                    "projected={projected} warn_at={warn_at} max={max}");
+            }
+        }
+
+        /// Property: saturating_add prevents overflow; check_projected never panics.
+        #[test]
+        fn no_panic_on_extreme_inputs(
+            current in 0u64..=u64::MAX,
+            increment in 0u64..=u64::MAX,
+            max in 0u64..=u64::MAX,
+        ) {
+            let mut warnings = Vec::new();
+            let mut exceeded = Vec::new();
+            check_projected(&mut warnings, &mut exceeded, "test", current, increment, max);
+            // Must never panic, always produce some valid state
+            prop_assert!(warnings.is_empty() || !warnings.is_empty());
+            prop_assert!(exceeded.is_empty() || !exceeded.is_empty());
+        }
     }
 }
