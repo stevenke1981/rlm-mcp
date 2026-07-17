@@ -120,8 +120,11 @@ function Install-BinaryWithLockedFallback {
         Copy-Item -LiteralPath $Source -Destination $stable -Force -ErrorAction Stop
         return $stable
     } catch {
+        # Match English + localized Windows IOException (e.g. zh-TW file-in-use).
         $message = $_.Exception.Message
-        if ($message -notmatch "being used by another process|cannot access the file|access.*denied") {
+        $isIo = $_.Exception -is [System.IO.IOException]
+        $looksLocked = $message -match "being used by another process|cannot access the file|access.*denied|in use|another process|正由|另一個|無法存取|拒絕存取"
+        if (-not ($isIo -or $looksLocked)) {
             throw
         }
         Copy-Item -LiteralPath $Source -Destination $versioned -Force -ErrorAction Stop
