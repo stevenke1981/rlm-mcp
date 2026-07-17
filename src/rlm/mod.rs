@@ -1,5 +1,6 @@
 mod artifacts;
 mod bm25;
+mod bm25_index;
 mod budget;
 pub(crate) mod cancel;
 mod chunk_store;

@@ -19,7 +19,7 @@
 | P1 | BM25 peek 預過濾 + bytes_scanned | **Done**（本 PR） |
 | P1 | workflow triage 建議 | **Done**（本 PR） |
 | P1 | 拆分 `RlmEngine` 上帝物件 | Planned |
-| P1 | BM25 索引持久化 | Planned |
+| P1 | BM25 索引持久化 | **Done**（本 PR） |
 | P1 | 更細的 session/trajectory 鎖 | Planned |
 | P2 | BrowseComp / OOLONG-Pairs mini fixtures | Planned |
 | P2 | async HTTP provider（reqwest feature） | Planned |
@@ -83,13 +83,13 @@ rlm/engine/{session_ops,map_ops,task_ops,observe}.rs
 
 行為不變；先拆檔再考慮 trait 邊界。
 
-### 4.2 BM25 索引持久化
+### 4.2 BM25 索引持久化 — **Done**
 
-- 第一次 bm25 peek 建索引 → `rlm-artifacts/<session>/bm25.bin`（或 artifacts）
-- session `revision` 變更時失效
-- 回傳 `index_hit` / `bytes_scanned` 供 agent 預算
-
-本輪已做：query-token 行級預過濾 + `bytes_scanned` / `chunks_scanned` 欄位。
+- 第一次 `bm25=true` peek 建索引 → `rlm-artifacts/<session>/bm25_v1_{cs|ci}.json`
+- session `revision` 變更時失效；session delete 清 memory + disk
+- 記憶體 LRU 式 cap（16 sessions）+ disk 回填
+- 查詢走 inverted postings；top-k 才 resolve chunk（context radius / include_content）
+- 回傳 `index_hit` / `index_source` / `index_revision` / `lines_indexed` / `bytes_scanned`
 
 ### 4.3 併發鎖
 
@@ -145,6 +145,6 @@ cargo test write_tools_snapshot -- --ignored
 
 1. 讀本文件與 [limitations.md](limitations.md)
 2. 不要重做「已完成」列
-3. 下一刀優先：**BM25 索引持久化** 或 **RlmEngine 拆分**
+3. 下一刀優先：**RlmEngine 拆分** 或 BrowseComp mini fixtures
 4. 任何 tool schema 變更必須同步 snapshot
 5. 取消路徑必須 kill 子行程並回 `Cancelled` / `isError`

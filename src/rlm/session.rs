@@ -351,6 +351,7 @@ impl SessionStore {
         }
         super::persistence::remove_session_file(id)?;
         let _ = super::chunk_store::remove_session_chunks(id);
+        super::bm25_index::invalidate_session(id);
         Ok(())
     }
 

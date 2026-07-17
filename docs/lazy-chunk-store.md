@@ -30,6 +30,19 @@ session JSON under `rlm-sessions/`. Peak memory and disk I/O scaled with the
 Older sessions with full inline `content` and no `content_file` still load and
 resolve correctly.
 
+### BM25 line index (related)
+
+`rlm_peek` with `bm25=true` builds a session-scoped line index on first use:
+
+| Layer | Path |
+|-------|------|
+| Disk | `rlm-artifacts/<session_id>/bm25_v1_cs.json` or `bm25_v1_ci.json` |
+| Memory | process-local cache keyed by `(session_id, revision, case_sensitive)` |
+
+Invalidated when `session.revision` changes or the session is deleted.
+Query-time postings avoid rescoring every line; chunk bodies are only loaded for
+top-k previews (`context_radius`) or `include_content`.
+
 ### What this is not
 
 - Not memory-mapped multi-GB single files beyond `RLM_MAX_FILE_BYTES`.

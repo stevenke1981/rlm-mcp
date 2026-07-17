@@ -32,6 +32,27 @@ impl Bm25Scorer {
         }
     }
 
+    /// Restore a scorer from a persisted full-corpus stats snapshot.
+    pub fn from_parts(doc_freq: HashMap<String, usize>, avgdl: f64, n_docs: usize) -> Self {
+        Self {
+            doc_freq,
+            avgdl,
+            n_docs: n_docs.max(1),
+        }
+    }
+
+    pub fn avgdl(&self) -> f64 {
+        self.avgdl
+    }
+
+    pub fn n_docs(&self) -> usize {
+        self.n_docs
+    }
+
+    pub fn doc_freq(&self) -> &HashMap<String, usize> {
+        &self.doc_freq
+    }
+
     pub fn score(&self, query: &[String], doc: &[String]) -> f64 {
         if doc.is_empty() || query.is_empty() {
             return 0.0;
