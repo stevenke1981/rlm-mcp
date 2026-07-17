@@ -113,7 +113,7 @@ Public path unchanged: `rlm_mcp::rlm::RlmEngine`.
 | BrowseComp-Plus mini | **Done** — `browsecomp_plus` suite |
 | OOLONG-Pairs mini | **Done** — `oolong_pairs` suite |
 | retrieval baseline | **Done** — docs: `retrieval_peek` = BM25 peek; CodeAct+BM25 仍 Differs |
-| GHCR Docker push | main release 可選推 image |
+| GHCR Docker push | **Done** — main → `latest`+`sha-*`; tags `v*` → semver + `latest` |
 | PR 上 Windows path_safety | **Done** — CI job `path-safety-windows` on PRs only |
 
 ---
@@ -149,6 +149,6 @@ cargo test write_tools_snapshot -- --ignored
 
 1. 讀本文件與 [limitations.md](limitations.md)
 2. 不要重做「已完成」列
-3. 下一刀優先：**GHCR Docker push**
+3. 下一刀優先：依需求選新功能；核心優化路線圖項目大多已完成
 4. 任何 tool schema 變更必須同步 snapshot
 5. 取消路徑必須 kill 子行程並回 `Cancelled` / `isError`

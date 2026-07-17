@@ -1,21 +1,24 @@
 # rlm-mcp — multi-stage Docker build
 #
-# Build:
+# Published image (GHCR):
+#   docker pull ghcr.io/stevenke1981/rlm-mcp:latest
+#
+# Local build:
 #   docker build -t rlm-mcp .
 #
 # Run (MCP stdio):
-#   echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | docker run -i rlm-mcp
+#   docker run -i --rm ghcr.io/stevenke1981/rlm-mcp:latest
 #
 # Run (CLI):
-#   docker run -i rlm-mcp workflow --json
+#   docker run -i --rm ghcr.io/stevenke1981/rlm-mcp:latest workflow --json
 #
 # Run with environment:
-#   docker run -i \
+#   docker run -i --rm \
 #     -e RLM_ALLOW_NETWORK=1 \
 #     -e RLM_OPENAI_API_KEY=sk-... \
 #     -e RLM_CACHE_DIR=/data/cache \
 #     -v rlm-data:/data \
-#     rlm-mcp
+#     ghcr.io/stevenke1981/rlm-mcp:latest
 
 # ---- Builder stage ----
 FROM rust:1.85-slim-bookworm AS builder

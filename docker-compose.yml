@@ -2,8 +2,9 @@ version: "3.9"
 
 services:
   rlm-mcp:
+    # Prefer published GHCR image; override with `docker compose build` for local Dockerfile.
+    image: ghcr.io/stevenke1981/rlm-mcp:latest
     build: .
-    image: rlm-mcp:latest
     container_name: rlm-mcp
     stdin_open: true
     tty: true

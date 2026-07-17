@@ -147,24 +147,36 @@ cargo build --release
 
 ### Docker
 
-rlm-mcp can be built and run as a Docker container for isolated deployments:
+Images are published to **GitHub Container Registry** on every `main` push and on version tags:
+
+| Event | Tags on `ghcr.io/stevenke1981/rlm-mcp` |
+|-------|----------------------------------------|
+| Push to `main` | `latest`, `sha-<git-sha>` |
+| Tag `vX.Y.Z` | `X.Y.Z`, `X.Y`, `latest` |
 
 ```bash
-# Build
-docker build -t rlm-mcp .
+# Pull published image (public package; first publish may need package visibility = Public)
+docker pull ghcr.io/stevenke1981/rlm-mcp:latest
 
 # Run in MCP stdio mode (for agent integration)
-echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | docker run -i rlm-mcp
+echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | docker run -i --rm ghcr.io/stevenke1981/rlm-mcp:latest
 
 # Run CLI command
-docker run -i rlm-mcp workflow --json
+docker run -i --rm ghcr.io/stevenke1981/rlm-mcp:latest workflow --json
 
-# With persistent cache and custom scripts
+# Pin a release
+docker run -i --rm ghcr.io/stevenke1981/rlm-mcp:0.1.7 workflow --json
+
+# Build locally instead of pulling
+docker build -t rlm-mcp .
+
+# Compose (uses GHCR image by default; see docker-compose.yml)
 docker compose up -d
 ```
 
-See `docker-compose.yml` for a full configuration including cache volumes,
-resource limits, and sandboxed command provider mounts.
+See `docker-compose.yml` for cache volumes, resource limits, and sandboxed
+command provider mounts. CI builds the image on every PR (no push); only `main`
+and release tags push to GHCR.
 
 ## Environment
 

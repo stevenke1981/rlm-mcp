@@ -147,6 +147,7 @@ Budget ceilings prevent runaway recursion:
 
 For the strongest isolation, run rlm-mcp in a container (see the
 [`Dockerfile`](../Dockerfile) and [`docker-compose.yml`](../docker-compose.yml)).
+Published images: `ghcr.io/stevenke1981/rlm-mcp` (`latest` on main, semver on tags).
 
 Container deployments:
 - Can mount a read-only host directory for scan sources.
