@@ -136,8 +136,8 @@ Walkthrough: [`rlm-loop.md`](rlm-loop.md) · Tool reference: [`tools.md`](tools.
 |-----------------|-----------------|--------|------------------|
 | **S-NIAH** | `src/benchmark/sniah.rs`, `rlm_benchmark_run` suite `sniah` | **Done** | `tests/benchmark_sniah.rs`, CI `mini`; optional `large`/`nightly` |
 | **OOLONG-like** | `src/benchmark/oolong.rs`, suite `oolong` | **Done** | `tests/benchmark_oolong.rs`, CI `mini` |
-| BrowseComp-Plus-like | Listed in `rlm_benchmark_list` → `planned` | **Planned** | — |
-| OOLONG-Pairs | `planned` in `list_suites()` | **Planned** | — |
+| BrowseComp-Plus-like | `src/benchmark/browsecomp.rs`, suite `browsecomp_plus` | **Done** | `tests/benchmark_browsecomp.rs`, CI `mini` |
+| OOLONG-Pairs | `src/benchmark/oolong_pairs.rs`, suite `oolong_pairs` | **Done** | `tests/benchmark_oolong_pairs.rs`, CI `mini` |
 | **CodeQA-style** | `src/benchmark/codeqa.rs`, suite `codeqa` | **Done** | `tests/benchmark_codeqa.rs`, CI `mini` |
 
 | Paper baseline | `BaselineKind` in `src/benchmark/types.rs` | Status |

@@ -473,7 +473,7 @@ impl McpServer {
 
     #[tool(
         name = "rlm_benchmark_list",
-        description = "List available RLM benchmark suites (S-NIAH mini-suite for CI)."
+        description = "List available RLM benchmark suites (S-NIAH, OOLONG, CodeQA, BrowseComp, OOLONG-Pairs; mini in CI)."
     )]
     async fn rlm_benchmark_list(
         &self,

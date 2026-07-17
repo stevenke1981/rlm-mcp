@@ -71,7 +71,7 @@
       "name": "rlm_artifact_write"
     },
     {
-      "description": "List available RLM benchmark suites (S-NIAH mini-suite for CI).",
+      "description": "List available RLM benchmark suites (S-NIAH, OOLONG, CodeQA, BrowseComp, OOLONG-Pairs; mini in CI).",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object"
@@ -86,7 +86,9 @@
             "enum": [
               "sniah",
               "oolong",
-              "codeqa"
+              "codeqa",
+              "browsecomp_plus",
+              "oolong_pairs"
             ],
             "type": "string"
           },

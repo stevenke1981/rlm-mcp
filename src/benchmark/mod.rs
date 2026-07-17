@@ -1,13 +1,23 @@
+mod browsecomp;
 mod codeqa;
 mod oolong;
+mod oolong_pairs;
 mod sniah;
 mod types;
 
+pub use browsecomp::{
+    extract_fact_value as extract_browsecomp_fact, generate_fixture as generate_browsecomp_fixture,
+    run as run_browsecomp, BrowsecompSize,
+};
 pub use codeqa::{
     extract_symbol, generate_fixture as generate_codeqa_fixture, run as run_codeqa, CodeqaSize,
 };
 pub use oolong::{
     generate_fixture as generate_oolong_fixture, run as run_oolong, sum_metrics, OolongSize,
+};
+pub use oolong_pairs::{
+    generate_fixture as generate_oolong_pairs_fixture, pair_count_from_text,
+    run as run_oolong_pairs, OolongPairsSize,
 };
 pub use sniah::{
     extract_needle_value, generate_fixture, run as run_sniah, SniahFixture, SniahSize,
@@ -88,12 +98,53 @@ pub fn list_suites() -> Value {
                     "sub_call_count"
                 ],
                 "offline": true
+            },
+            {
+                "id": "browsecomp_plus",
+                "name": "BrowseComp-Plus-like multi-document fact lookup",
+                "description": "Synthetic multi-page corpus; baselines must recover a buried BROWSE_FACT from a middle page.",
+                "fixture_sizes": ["mini", "small"],
+                "ci_fixture_sizes": ["mini"],
+                "ci_default": "mini",
+                "baselines": BaselineKind::all()
+                    .iter()
+                    .map(|b| b.as_str())
+                    .collect::<Vec<_>>(),
+                "metrics": [
+                    "accuracy",
+                    "bytes_in",
+                    "bytes_out",
+                    "tokens_est",
+                    "runtime_ms",
+                    "trajectory_events",
+                    "sub_call_count"
+                ],
+                "offline": true
+            },
+            {
+                "id": "oolong_pairs",
+                "name": "OOLONG-Pairs-like pairwise aggregation",
+                "description": "Documents labeled CATEGORY=...; baselines must count unordered same-category pairs.",
+                "fixture_sizes": ["mini", "small"],
+                "ci_fixture_sizes": ["mini"],
+                "ci_default": "mini",
+                "baselines": BaselineKind::all()
+                    .iter()
+                    .map(|b| b.as_str())
+                    .collect::<Vec<_>>(),
+                "metrics": [
+                    "accuracy",
+                    "bytes_in",
+                    "bytes_out",
+                    "tokens_est",
+                    "runtime_ms",
+                    "trajectory_events",
+                    "sub_call_count"
+                ],
+                "offline": true
             }
         ],
-        "planned": [
-            "browsecomp_plus",
-            "oolong_pairs"
-        ]
+        "planned": []
     })
 }
 
@@ -118,6 +169,20 @@ pub fn run_suite(engine: &RlmEngine, suite: &str, fixture_size: Option<&str>) ->
                 .and_then(CodeqaSize::parse_size)
                 .unwrap_or(CodeqaSize::Mini);
             let report = run_codeqa(engine, size)?;
+            Ok(report.to_value())
+        }
+        "browsecomp_plus" | "browsecomp" => {
+            let size = fixture_size
+                .and_then(BrowsecompSize::parse_size)
+                .unwrap_or(BrowsecompSize::Mini);
+            let report = run_browsecomp(engine, size)?;
+            Ok(report.to_value())
+        }
+        "oolong_pairs" | "oolong-pairs" => {
+            let size = fixture_size
+                .and_then(OolongPairsSize::parse_size)
+                .unwrap_or(OolongPairsSize::Mini);
+            let report = run_oolong_pairs(engine, size)?;
             Ok(report.to_value())
         }
         other => Err(Error::InvalidArgument(format!(

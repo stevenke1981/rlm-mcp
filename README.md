@@ -291,4 +291,4 @@ project's RLM implementation.
 
 See [`TODO.md`](TODO.md) for the full paper-complete implementation backlog.
 
-**Current status:** Paper-complete core (P0–P3); optional benchmark adapters: S-NIAH + OOLONG shipped; BrowseComp/CodeQA planned.
+**Current status:** Paper-complete core (P0–P3); offline benchmarks: S-NIAH, OOLONG, CodeQA, BrowseComp-Plus, OOLONG-Pairs (`mini` in CI).

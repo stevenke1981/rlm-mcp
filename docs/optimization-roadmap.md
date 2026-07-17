@@ -21,7 +21,7 @@
 | P1 | 拆分 `RlmEngine` 上帝物件 | **Done**（本 PR） |
 | P1 | BM25 索引持久化 | **Done**（本 PR） |
 | P1 | 更細的 session/trajectory 鎖 | Planned |
-| P2 | BrowseComp / OOLONG-Pairs mini fixtures | Planned |
+| P2 | BrowseComp / OOLONG-Pairs mini fixtures | **Done**（本 PR） |
 | P2 | async HTTP provider（reqwest feature） | Planned |
 | P2 | semantic embedding peek（optional feature） | Deferred — see [embedding-roadmap.md](embedding-roadmap.md) |
 
@@ -109,8 +109,8 @@ Public path unchanged: `rlm_mcp::rlm::RlmEngine`.
 
 | 項目 | 說明 |
 |------|------|
-| BrowseComp-Plus mini | 本地 corpus + 問題集進 CI |
-| OOLONG-Pairs mini | 縮小 pairwise aggregation |
+| BrowseComp-Plus mini | **Done** — `browsecomp_plus` suite |
+| OOLONG-Pairs mini | **Done** — `oolong_pairs` suite |
 | retrieval baseline | 明確文件：`retrieval_peek` vs 論文 CodeAct+BM25 |
 | GHCR Docker push | main release 可選推 image |
 | PR 上 Windows path_safety | 縮小 matrix 控分鐘數 |
@@ -148,6 +148,6 @@ cargo test write_tools_snapshot -- --ignored
 
 1. 讀本文件與 [limitations.md](limitations.md)
 2. 不要重做「已完成」列
-3. 下一刀優先：**BrowseComp / OOLONG-Pairs mini fixtures** 或 trajectory 細鎖
+3. 下一刀優先：**trajectory 細鎖 / 併發讀** 或 async HTTP provider
 4. 任何 tool schema 變更必須同步 snapshot
 5. 取消路徑必須 kill 子行程並回 `Cancelled` / `isError`

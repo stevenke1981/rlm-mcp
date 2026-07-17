@@ -80,11 +80,28 @@ fn cli_tools_reference_json_contract() {
 #[test]
 fn cli_benchmark_list_json_contract() {
     let value = run_json(&["benchmark", "list", "--json"]);
-    assert!(value["suites"]
+    let ids: Vec<&str> = value["suites"]
         .as_array()
         .unwrap()
         .iter()
-        .any(|s| { s["id"].as_str() == Some("sniah") }));
+        .filter_map(|s| s["id"].as_str())
+        .collect();
+    for expected in [
+        "sniah",
+        "oolong",
+        "codeqa",
+        "browsecomp_plus",
+        "oolong_pairs",
+    ] {
+        assert!(
+            ids.contains(&expected),
+            "missing suite {expected} in {ids:?}"
+        );
+    }
+    assert!(value["planned"]
+        .as_array()
+        .map(|a| a.is_empty())
+        .unwrap_or(false));
 }
 
 #[test]

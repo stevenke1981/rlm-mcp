@@ -18,8 +18,44 @@ rlm-mcp benchmark-list --json
 | `sniah` | **Runnable** | `mini` | `mini`, `small`, `large`, `nightly` |
 | `oolong` | **Runnable** | `mini` | `mini`, `small` |
 | `codeqa` | **Runnable** | `mini` | `mini`, `small` |
-| `browsecomp_plus` | Planned | — | — |
-| `oolong_pairs` | Planned | — | — |
+| `browsecomp_plus` | **Runnable** | `mini` | `mini`, `small` |
+| `oolong_pairs` | **Runnable** | `mini` | `mini`, `small` |
+
+---
+
+## BrowseComp-Plus-like (multi-document fact lookup)
+
+**Task:** A synthetic multi-page corpus buries `BROWSE_FACT=MAGIC-BC-…` on a **middle page**. Baselines must recover the fact value.
+
+**Fixture generation** (`src/benchmark/browsecomp.rs`):
+
+| Size | Pages | Typical use |
+|------|-------|-------------|
+| `mini` | 8 | CI, fast local check |
+| `small` | 16 | Local regression |
+
+Compaction (head/tail only) is designed to **miss** the middle-page fact.
+
+```powershell
+rlm-mcp benchmark run browsecomp_plus --size mini --json
+```
+
+---
+
+## OOLONG-Pairs-like (pairwise aggregation)
+
+**Task:** Each document has a buried `CATEGORY=… VAL=…` line. Gold answer is the number of **unordered pairs of documents that share the same CATEGORY** (`C(n,2)` per category, summed).
+
+**Fixture generation** (`src/benchmark/oolong_pairs.rs`):
+
+| Size | Documents | Typical use |
+|------|-----------|-------------|
+| `mini` | 8 | CI, fast local check |
+| `small` | 14 | Local regression |
+
+```powershell
+rlm-mcp benchmark run oolong_pairs --size mini --json
+```
 
 ---
 
@@ -190,7 +226,7 @@ Assertions in `sniah_mini_suite_runs_all_baselines`:
 
 ### Claims the mini-suite does *not* fully prove
 
-- BrowseComp-Plus, OOLONG, OOLONG-Pairs, CodeQA task families (adapters planned).
+- All five offline suites: S-NIAH, OOLONG, CodeQA, BrowseComp-Plus, OOLONG-Pairs (`mini` in CI).
 - True BM25 / CodeAct baselines from the paper.
 - Live model quality across providers (only `mock` in harness).
 - Large-scale tail latency distributions (use `large` / `nightly` + budget/trajectory tools).

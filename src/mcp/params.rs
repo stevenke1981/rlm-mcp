@@ -299,6 +299,10 @@ pub enum BenchmarkSuite {
     Sniah,
     Oolong,
     Codeqa,
+    #[serde(alias = "browsecomp")]
+    BrowsecompPlus,
+    #[serde(alias = "oolong-pairs")]
+    OolongPairs,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, JsonSchema)]
