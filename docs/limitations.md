@@ -59,7 +59,7 @@ See also: [`examples/bad-prompt-stuffing.md`](../examples/bad-prompt-stuffing.md
 
 - Default integration path: **host agent** plans filter/map/reduce; long text never leaves the session unless you explicitly chunk or call a provider.
 - `rlm_task_*` with `provider: mock` proves the recursion *protocol*, not production model quality.
-- No dollar-cost accounting until provider hooks land (TODO P1/P2).
+- **Cost estimates:** `rlm_budget_status` reports token/byte usage and optional `provider_cost_usd_est` when a provider returns pricing/usage hooks. Exact billed USD still depends on the remote provider.
 
 **Guidance:** Treat live model recursion as opt-in. Local tests and CI require **no API keys**.
 

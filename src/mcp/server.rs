@@ -58,9 +58,15 @@ impl McpServer {
         }
         let handler = self.handler.clone();
         let args = serialize_params(params)?;
-        let result = tokio::task::spawn_blocking(move || handler.handle(name, &args));
+        let worker_token = cancellation.clone();
+        let result = tokio::task::spawn_blocking(move || {
+            // Propagate MCP cancel into command/REPL wait loops on this thread.
+            let _guard = crate::rlm::CancelGuard::install(worker_token);
+            handler.handle(name, &args)
+        });
         tokio::select! {
             _ = cancellation.cancelled() => {
+                // Worker continues briefly until its next cancel poll, then kills children.
                 Err(ErrorData::internal_error("request cancelled", None))
             }
             joined = result => {

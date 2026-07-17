@@ -12,6 +12,9 @@
 
 ## Status and hard decisions
 
+**Migration status (2026-07-17): COMPLETE for protocol/router.** Remaining work
+is product polish tracked in [`docs/optimization-roadmap.md`](docs/optimization-roadmap.md).
+
 Implementation snapshot (2026-06-13): official `rmcp` `ServerHandler`, stdio,
 capability negotiation, 33-tool listing/calling, domain error results, official
 client contract tests, and rebuilt release-binary handshake smoke are complete.
@@ -21,11 +24,13 @@ registered through the official `#[tool_router]` / `#[tool_handler]` path with
 typed Schemars input structs and generated schemas. `rlm_tools_reference` and
 the packaging tool snapshot now read the generated router metadata instead of
 hand-written schema definitions. Router methods accept the SDK cancellation
-token and bound active tool calls when MCP `notifications/cancelled` arrives;
-subprocess/provider hard termination remains a follow-up for command/openai
-backends that block inside domain code.
+token and bound active tool calls when MCP `notifications/cancelled` arrives.
 
-- [x] Use the current official stable SDK: `rmcp = 1.7.0`.
+Implementation snapshot (2026-07-17): command provider + REPL wait loops honor
+thread-local MCP cancellation (kill child on cancel) and `RLM_PROVIDER_MAX_WALL_SECS`
+(default 300s). Cargo depends on `rmcp 2.2.x`.
+
+- [x] Use the current official stable SDK: `rmcp = 2.2.x` (migrated from 1.7.0).
 - [x] Pin the SDK in `Cargo.lock`; update it only through a dedicated dependency change and protocol regression run.
 - [x] Use `rmcp` stdio transport as the only MCP transport implementation.
 - [x] Keep binary and MCP server name `rlm-mcp`.
@@ -207,10 +212,10 @@ Acceptance:
 - [x] Connect the SDK request cancellation signal to active router tool calls; deeper provider/REPL subprocess termination remains below.
 - [x] Keep `rlm_task_cancel` as the domain-level persistent task-tree cancellation API.
 - [x] Define precedence: MCP request cancellation stops the active request; `rlm_task_cancel` marks the persistent task tree cancelled.
-- [ ] Ensure command providers and REPL subprocesses are terminated when cancellation is supported. (Follow-up: router-level request cancellation is bounded; blocking subprocess termination still needs provider/REPL token plumbing.)
-- [ ] Do not persist a successful completion event after cancellation. (Follow-up for domain/provider cancellation paths.)
-- [ ] Record a redacted cancellation trajectory event when a session/task exists. (Follow-up for session/task-aware cancellation paths.)
-- [ ] Add timeout-bounded tests using mock providers and a slow command fixture. (Partial: official rmcp cancellable request path is covered; add slow command/provider fixture when provider/REPL token plumbing lands.)
+- [x] Ensure command providers and REPL subprocesses are terminated when cancellation is supported. (`src/rlm/cancel.rs` + `process_wait.rs`; command + REPL kill on cancel/timeout.)
+- [x] Do not persist a successful completion event after cancellation. (Provider/REPL return `Error::Cancelled` before parse/complete.)
+- [ ] Record a redacted cancellation trajectory event when a session/task exists. (Follow-up: session-aware cancel events on MCP cancel without task_id.)
+- [x] Add timeout-bounded tests using mock providers and a slow command fixture. (`process_wait` unit tests: cancel + wall timeout.)
 
 Acceptance:
 

@@ -56,12 +56,43 @@ pub fn workflow_guidance(phase: &str) -> Value {
                 "Second recursion only for proven gaps"
             ]
         }),
+        "triage" | "decide" => json!({
+            "phase": "triage",
+            "description": "Decide whether full RLM is worth the overhead (paper: small contexts may lose to direct calls)",
+            "tools": ["rlm_scan", "rlm_env_info", "rlm_workflow"],
+            "steps": [
+                "After rlm_scan / rlm_env_info, inspect total_bytes and chunk_count",
+                "Pick a recommendation below before spawning map workers or sub-tasks"
+            ],
+            "recommendations": [
+                {
+                    "when": "total_bytes under ~32KiB and single-shot QA",
+                    "prefer": "direct",
+                    "action": "One model call on the text, or a single rlm_chunk — skip map/reduce/recursion"
+                },
+                {
+                    "when": "needle buried in one long file, known keywords",
+                    "prefer": "peek",
+                    "action": "rlm_peek (substring/regex/bm25) → targeted rlm_chunk"
+                },
+                {
+                    "when": "multi-file corpus, unknown location, dense aggregation",
+                    "prefer": "full_loop",
+                    "action": "filter → map (claim/complete) → reduce; budget before recursion"
+                }
+            ],
+            "rules": [
+                "Do not run full RLM on tiny prompts — median cost can exceed direct calls",
+                "Configure rlm_budget_configure before deep rlm_task_create trees",
+                "See docs/limitations.md and docs/optimization-roadmap.md"
+            ]
+        }),
         _ => json!({
             "phase": "overview",
             "description": "Recursive Language Model — external context, programmatic access",
             "paper": "https://arxiv.org/pdf/2512.24601",
-            "phases": ["load", "filter", "map", "reduce"],
-            "loop": "load → filter → map (parallel) → reduce",
+            "phases": ["triage", "load", "filter", "map", "reduce"],
+            "loop": "triage → load → filter → map (parallel) → reduce",
             "standalone": true,
             "core_tools": [
                 "rlm_workflow", "rlm_scan", "rlm_env_info", "rlm_peek", "rlm_slice",
@@ -74,7 +105,8 @@ pub fn workflow_guidance(phase: &str) -> Value {
                 "rlm_budget_configure", "rlm_budget_status", "rlm_task_cancel",
                 "rlm_session_list", "rlm_session_delete"
             ],
-            "principle": "Context is external. LLM orchestrates via MCP tools — no bulk context loading."
+            "principle": "Context is external. LLM orchestrates via MCP tools — no bulk context loading.",
+            "hint": "Call rlm_workflow(phase=\"triage\") before full loops on small inputs"
         }),
     }
 }

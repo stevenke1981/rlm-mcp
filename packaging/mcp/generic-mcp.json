@@ -3,7 +3,11 @@
     "rlm-mcp": {
       "command": "{{RLM_BINARY}}",
       "args": [],
-      "env": {}
+      "env": {
+        "RLM_LOG_FORMAT": "pretty",
+        "RLM_PROVIDER_SANDBOX": "strict",
+        "RLM_ALLOW_NETWORK": "0"
+      }
     }
   }
 }

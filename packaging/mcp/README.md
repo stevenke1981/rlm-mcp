@@ -7,7 +7,7 @@ Transport: stdio
 Binary: `rlm-mcp` or absolute path to release binary
 
 Protocol negotiation, capabilities, JSON-RPC envelopes, and stdio transport
-are provided by the official Rust MCP SDK (`rmcp 1.7.0`). Stdout is reserved
+are provided by the official Rust MCP SDK (`rmcp 2.2.x`). Stdout is reserved
 for MCP frames; logs go to stderr.
 
 ## Contract snapshot
@@ -51,6 +51,23 @@ Replace `{{RLM_BINARY}}` with an absolute path.
 | Variable | Purpose |
 |----------|---------|
 | `RLM_CACHE_DIR` | Session cache (default: OS cache dir / `rlm-mcp`) |
+| `RLM_LOG_FORMAT` | `pretty` (default) or `json` on stderr |
+| `RLM_PROVIDER_SANDBOX` | `strict` / `warn` (default) / `off` — see [security.md](../../docs/security.md) |
+| `RLM_PROVIDER_ALLOWED_DIRS` | Semicolon-separated allowlist for strict command provider |
+| `RLM_PROVIDER_MAX_WALL_SECS` | Kill command provider after N seconds (default `300`; `0` = no limit) |
+| `RLM_ALLOW_NETWORK` | Must be `1` for OpenAI-compatible provider |
+| `RLM_ALLOW_REPL_EXEC` | Must be `1` for executable REPL backend |
+
+**Production-oriented example env** (command provider locked down):
+
+```json
+{
+  "RLM_PROVIDER_SANDBOX": "strict",
+  "RLM_PROVIDER_ALLOWED_DIRS": "/opt/rlm-scripts",
+  "RLM_PROVIDER_MAX_WALL_SECS": "120",
+  "RLM_ALLOW_NETWORK": "0"
+}
+```
 
 No `CBM_*` variables — this server does not call codebase-memory-mcp.
 

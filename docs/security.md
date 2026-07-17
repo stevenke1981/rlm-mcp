@@ -60,6 +60,8 @@ Even in `off` mode, the command provider:
 - Receives input via stdin and environment variables (`RLM_SUB_PROMPT`,
   `RLM_SUB_CONTEXT`), not CLI arguments.
 - Output is captured from stdout.
+- Is killed if the MCP request is cancelled or if
+  `RLM_PROVIDER_MAX_WALL_SECS` (default `300`) elapses.
 
 For production deployments:
 - Run rlm-mcp in a container (see [Docker support](#docker)).

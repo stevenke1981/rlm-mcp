@@ -1,6 +1,7 @@
 use super::sandbox::{validate_command, SandboxMode};
 use super::{ProviderResult, SubModelProvider};
 use crate::error::{Error, Result};
+use crate::rlm::process_wait::{provider_max_wall, wait_child};
 use serde_json::{json, Value};
 use std::process::{Command, Stdio};
 
@@ -74,10 +75,20 @@ impl SubModelProvider for CommandProvider {
         if let Some(mut stdin) = child.stdin.take() {
             use std::io::Write;
             let body = payload.to_string();
-            stdin.write_all(body.as_bytes()).map_err(Error::Io)?;
+            if let Err(e) = stdin.write_all(body.as_bytes()) {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(Error::Io(e));
+            }
+            // Drop stdin so the child sees EOF.
+            drop(stdin);
         }
 
-        let output = child.wait_with_output().map_err(Error::Io)?;
+        let output = wait_child(
+            &mut child,
+            provider_max_wall(),
+            &format!("command provider '{}'", self.program),
+        )?;
         if !output.status.success() {
             return Err(Error::Other(format!(
                 "command provider exited with {}: {}",

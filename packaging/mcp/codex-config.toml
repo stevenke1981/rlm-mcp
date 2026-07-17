@@ -1,3 +1,9 @@
 [mcp_servers.rlm-mcp]
 command = "{{RLM_BINARY}}"
 args = []
+
+# Optional production-hardening env (uncomment / set in host env as needed):
+# RLM_PROVIDER_SANDBOX=strict
+# RLM_PROVIDER_ALLOWED_DIRS=/opt/rlm-scripts
+# RLM_ALLOW_NETWORK=0
+# RLM_PROVIDER_MAX_WALL_SECS=120

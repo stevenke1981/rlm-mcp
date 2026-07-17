@@ -111,7 +111,7 @@ Replace `command` with the absolute path from `install.ps1` / `install.sh`, or u
 
 The installer updates both existing `opencode.json` and `opencode.jsonc` files and `%USERPROFILE%\.codex\config.toml`. Restart the agent or open a new session after installation because MCP tools are loaded when a session starts.
 
-The MCP protocol boundary uses the official Rust SDK, `rmcp 1.7.0`, for stdio
+The MCP protocol boundary uses the official Rust SDK, `rmcp 2.2.x`, for stdio
 framing, protocol negotiation, capabilities, request IDs, and error envelopes.
 The 33-tool contract remains locked by
 [`packaging/mcp/tools-list.snapshot.json`](packaging/mcp/tools-list.snapshot.json).
@@ -186,8 +186,10 @@ resource limits, and sandboxed command provider mounts.
 | `RLM_PROVIDER_ARGS` | `[]` | JSON array or whitespace-separated args |
 | `RLM_PROVIDER_SANDBOX` | `warn` | Sandbox mode: `strict`, `warn`, or `off` (see [security](docs/security.md)) |
 | `RLM_PROVIDER_ALLOWED_DIRS` | — | Semicolon-separated allowed directories (strict mode) |
+| `RLM_PROVIDER_MAX_WALL_SECS` | `300` | Kill command provider after N seconds (`0` = no limit) |
 | `RLM_PROVIDER_MAX_RETRIES` | `3` | Provider retry attempts |
 | `RLM_PROVIDER_RETRY_DELAY_MS` | `200` | Base delay between retries (exponential backoff) |
+| `RLM_LOG_FORMAT` | `pretty` | stderr logs: `pretty` or `json` |
 | `RLM_OPENAI_PROMPT_COST_PER_1K` | — | Optional USD/1K prompt tokens for cost est. |
 | `RLM_OPENAI_COMPLETION_COST_PER_1K` | — | Optional USD/1K completion tokens |
 

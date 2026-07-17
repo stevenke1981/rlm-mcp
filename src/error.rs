@@ -19,6 +19,9 @@ pub enum Error {
     #[error("budget exceeded: {0}")]
     BudgetExceeded(String),
 
+    #[error("cancelled: {0}")]
+    Cancelled(String),
+
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
 

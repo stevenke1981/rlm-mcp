@@ -1,6 +1,7 @@
 mod artifacts;
 mod bm25;
 mod budget;
+pub(crate) mod cancel;
 mod chunk_store;
 mod config;
 mod env;
@@ -8,6 +9,7 @@ mod filter;
 mod map;
 mod map_ledger;
 mod persistence;
+mod process_wait;
 mod provider;
 mod reduce;
 mod repl;
@@ -17,6 +19,8 @@ mod task;
 mod trajectory;
 mod transform;
 mod workflow;
+
+pub use cancel::CancelGuard;
 
 pub use budget::{BudgetMode, SessionBudget};
 pub use config::RlmConfig;

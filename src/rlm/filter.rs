@@ -49,6 +49,8 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
 
     let mut total_matches = 0usize;
     let mut results = Vec::new();
+    let mut chunks_scanned = 0usize;
+    let mut bytes_scanned = 0usize;
 
     for chunk in &session.chunks {
         if !path_matches(chunk, opts.path_filter, opts.glob) {
@@ -59,6 +61,8 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
             Ok(c) => c,
             Err(_) => continue,
         };
+        chunks_scanned += 1;
+        bytes_scanned += content.len();
         let line_matches = find_line_matches(chunk, &content, &opts, compiled.as_ref());
         total_matches += line_matches.len();
 
@@ -104,6 +108,8 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
         "total_match_lines": total_matches,
         "returned": results.len(),
         "truncated": total_matches > results.len(),
+        "bytes_scanned": bytes_scanned,
+        "chunks_scanned": chunks_scanned,
         "file_summary": file_summary,
         "matches": results,
         "hint": "Feed chunk_id values into rlm_chunk or rlm_map_plan"
@@ -113,6 +119,8 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
 fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
     let query_text = opts.query.unwrap_or("");
     let query_tokens = tokenize(query_text, opts.case_sensitive);
+    let query_set: std::collections::HashSet<&str> =
+        query_tokens.iter().map(String::as_str).collect();
 
     struct OwnedCandidate {
         chunk_id: String,
@@ -122,10 +130,15 @@ fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
         line_no: usize,
         /// Index into `bodies` (one resolved body per chunk).
         body_idx: usize,
+        line_tokens: Vec<String>,
     }
 
     let mut bodies: Vec<String> = Vec::new();
     let mut candidates: Vec<OwnedCandidate> = Vec::new();
+    let mut chunks_scanned = 0usize;
+    let mut bytes_scanned = 0usize;
+    let mut lines_considered = 0usize;
+
     for chunk in &session.chunks {
         if !path_matches(chunk, opts.path_filter, opts.glob) {
             continue;
@@ -134,10 +147,12 @@ fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
             Ok(c) => c,
             Err(_) => continue,
         };
+        chunks_scanned += 1;
+        bytes_scanned += content.len();
         let body_idx = bodies.len();
-        let line_count = content.lines().count();
+        let lines: Vec<String> = content.lines().map(str::to_string).collect();
         bodies.push(content);
-        for i in 0..line_count {
+        for (i, line) in lines.iter().enumerate() {
             let line_no = chunk.offset + i + 1;
             if let Some(start) = opts.line_start {
                 if line_no < start {
@@ -149,6 +164,13 @@ fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
                     continue;
                 }
             }
+            lines_considered += 1;
+            let line_tokens = tokenize(line, opts.case_sensitive);
+            // Prefilter: skip lines with no overlap against query tokens (score would be 0).
+            if !query_set.is_empty() && !line_tokens.iter().any(|t| query_set.contains(t.as_str()))
+            {
+                continue;
+            }
             candidates.push(OwnedCandidate {
                 chunk_id: chunk.id.clone(),
                 path: chunk.path.clone(),
@@ -156,23 +178,18 @@ fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
                 line_idx: i,
                 line_no,
                 body_idx,
+                line_tokens,
             });
         }
     }
 
-    let doc_tokens: Vec<Vec<String>> = candidates
-        .iter()
-        .map(|c| {
-            let line = bodies[c.body_idx].lines().nth(c.line_idx).unwrap_or("");
-            tokenize(line, opts.case_sensitive)
-        })
-        .collect();
+    let doc_tokens: Vec<Vec<String>> = candidates.iter().map(|c| c.line_tokens.clone()).collect();
     let scorer = Bm25Scorer::from_documents(&doc_tokens);
 
     let mut scored: Vec<(usize, f64)> = candidates
         .iter()
         .enumerate()
-        .map(|(idx, _)| (idx, scorer.score(&query_tokens, &doc_tokens[idx])))
+        .map(|(idx, c)| (idx, scorer.score(&query_tokens, &c.line_tokens)))
         .filter(|(_, score)| *score > 0.0)
         .collect();
 
@@ -226,6 +243,10 @@ fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
         "total_match_lines": total_matches,
         "returned": results.len(),
         "truncated": total_matches > results.len(),
+        "bytes_scanned": bytes_scanned,
+        "chunks_scanned": chunks_scanned,
+        "lines_considered": lines_considered,
+        "candidates_scored": candidates.len(),
         "file_summary": file_summary,
         "matches": results,
         "hint": "BM25-ranked lines; feed chunk_id into rlm_chunk or rlm_map_plan"

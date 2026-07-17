@@ -4,6 +4,7 @@ use super::{
     SandboxLimits,
 };
 use crate::error::{Error, Result};
+use crate::rlm::process_wait::wait_child;
 use serde_json::{json, Value};
 use std::io::Write;
 use std::path::PathBuf;
@@ -102,48 +103,25 @@ impl CommandSandboxBackend {
             .map_err(|e| Error::Other(format!("failed to spawn RLM_REPL_COMMAND: {e}")))?;
 
         if let Some(mut stdin) = child.stdin.take() {
-            stdin
-                .write_all(input.as_bytes())
-                .map_err(|e| Error::Other(format!("REPL stdin write failed: {e}")))?;
+            if let Err(e) = stdin.write_all(input.as_bytes()) {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(Error::Other(format!("REPL stdin write failed: {e}")));
+            }
+            drop(stdin);
         }
 
-        loop {
-            match child.try_wait() {
-                Ok(Some(status)) => {
-                    let mut stdout = Vec::new();
-                    let mut stderr = Vec::new();
-                    if let Some(mut out) = child.stdout.take() {
-                        std::io::Read::read_to_end(&mut out, &mut stdout).map_err(Error::Io)?;
-                    }
-                    if let Some(mut err) = child.stderr.take() {
-                        std::io::Read::read_to_end(&mut err, &mut stderr).map_err(Error::Io)?;
-                    }
-                    let stdout = String::from_utf8_lossy(&stdout).into_owned();
-                    let stderr = String::from_utf8_lossy(&stderr).into_owned();
-                    if !status.success() {
-                        return Err(Error::Other(format!(
-                            "REPL command exited {}: {}",
-                            status,
-                            stderr.trim()
-                        )));
-                    }
-                    let (content, truncated) = truncate_output(&stdout, &self.limits);
-                    return Ok((content, started.elapsed().as_millis() as u64, truncated));
-                }
-                Ok(None) => {
-                    if started.elapsed() > timeout {
-                        let _ = child.kill();
-                        let _ = child.wait();
-                        return Err(Error::Other(format!(
-                            "REPL command exceeded wall limit of {}s",
-                            self.limits.max_wall_secs
-                        )));
-                    }
-                    std::thread::sleep(Duration::from_millis(25));
-                }
-                Err(e) => return Err(Error::Io(e)),
-            }
+        let output = wait_child(&mut child, Some(timeout), "REPL command")?;
+        if !output.status.success() {
+            return Err(Error::Other(format!(
+                "REPL command exited {}: {}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr).trim()
+            )));
         }
+        let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+        let (content, truncated) = truncate_output(&stdout, &self.limits);
+        Ok((content, started.elapsed().as_millis() as u64, truncated))
     }
 }
 
