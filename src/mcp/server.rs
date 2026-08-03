@@ -520,8 +520,7 @@ impl ServerHandler for McpServer {
     ) -> std::result::Result<ListToolsResult, ErrorData> {
         Ok(ListToolsResult {
             tools: normalize_tool_schemas(self.tool_router.list_all()),
-            meta: None,
-            next_cursor: None,
+            ..Default::default()
         })
     }
 
