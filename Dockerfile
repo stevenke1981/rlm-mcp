@@ -21,7 +21,7 @@
 #     ghcr.io/stevenke1981/rlm-mcp:latest
 
 # ---- Builder stage ----
-FROM rust:1.85-slim-bookworm AS builder
+FROM rust:1.88-slim-bookworm AS builder
 
 WORKDIR /app
 
