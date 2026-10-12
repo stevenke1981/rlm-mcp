@@ -92,6 +92,12 @@ Search and filter without loading full context into the model.
 
 **Returns:** `matches[]` with `chunk_id`, `line`, `preview` (and `bm25_score` when `bm25=true`); `search_mode` is `substring`, `regex`, or `bm25`.
 
+For substring/regex searches, `limit` bounds the returned matches;
+`total_match_lines` and `file_summary` count all matching lines in the selected
+chunks. The chunks are read once, and `bytes_scanned` / `chunks_scanned` include
+that full scan. Invalid regex patterns return a tool error (CLI: nonzero exit).
+`case_sensitive=false` applies to regex as well as substring matching.
+
 ### `rlm_slice`
 
 Read a line range from one chunk (REPL-style slice).

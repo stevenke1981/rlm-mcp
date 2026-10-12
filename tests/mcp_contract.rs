@@ -216,6 +216,64 @@ async fn official_rmcp_client_preserves_tool_contract_and_rlm_loop() {
         .expect("domain errors stay inside tool results");
     assert_eq!(missing_session.is_error, Some(true));
 
+    let invalid_regex = client
+        .call_tool(
+            CallToolRequestParams::new("rlm_peek").with_arguments(arguments(json!({
+                "session_id": session_id,
+                "query": "[",
+                "regex": true
+            }))),
+        )
+        .await
+        .expect("invalid regex stays inside a tool result");
+    assert_eq!(
+        invalid_regex.is_error,
+        Some(true),
+        "invalid regex must not look like an empty successful search"
+    );
+    assert!(invalid_regex.content[0]
+        .as_text()
+        .unwrap()
+        .text
+        .contains("regex"));
+
+    let huge_radius = client
+        .call_tool(
+            CallToolRequestParams::new("rlm_peek").with_arguments(arguments(json!({
+                "session_id": session_id,
+                "query": "needle",
+                "regex": true,
+                "case_sensitive": false,
+                "context_radius": u64::MAX
+            }))),
+        )
+        .await
+        .expect("valid search after an invalid request");
+    assert_eq!(huge_radius.is_error, Some(false));
+    assert_eq!(text_json(&huge_radius)["returned"], 1);
+
+    let invalid_type = client
+        .call_tool(
+            CallToolRequestParams::new("rlm_peek").with_arguments(arguments(json!({
+                "session_id": session_id,
+                "limit": "all"
+            }))),
+        )
+        .await
+        .expect("typed parameter error stays inside a tool result");
+    assert_eq!(invalid_type.is_error, Some(true));
+
+    let deleted = client
+        .call_tool(
+            CallToolRequestParams::new("rlm_session_delete").with_arguments(arguments(json!({
+                "session_id": session_id
+            }))),
+        )
+        .await
+        .expect("delete synthetic session");
+    assert_eq!(deleted.is_error, Some(false));
+    assert!(!cache.path().join("rlm-chunks").join(&session_id).exists());
+
     client.cancel().await.expect("cancel client");
     server_task.await.expect("join server task");
 }

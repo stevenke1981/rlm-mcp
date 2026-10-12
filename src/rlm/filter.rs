@@ -1,8 +1,9 @@
+use crate::error::{Error, Result};
 use crate::rlm::bm25::tokenize;
 use crate::rlm::bm25_index;
 use crate::rlm::chunk_store;
 use crate::rlm::session::{Chunk, ScanSession};
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use serde_json::{json, Value};
 
 #[derive(Debug, Clone)]
@@ -38,20 +39,27 @@ impl<'a> Default for PeekOptions<'a> {
     }
 }
 
-pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
+pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Result<Value> {
     if opts.bm25 {
-        return peek_bm25(session, opts);
+        return Ok(peek_bm25(session, opts));
     }
 
     let compiled = opts
         .query
         .filter(|_| opts.regex)
-        .and_then(|q| Regex::new(q).ok());
+        .map(|query| {
+            RegexBuilder::new(query)
+                .case_insensitive(!opts.case_sensitive)
+                .build()
+                .map_err(|error| Error::InvalidArgument(format!("invalid regex: {error}")))
+        })
+        .transpose()?;
 
     let mut total_matches = 0usize;
     let mut results = Vec::new();
     let mut chunks_scanned = 0usize;
     let mut bytes_scanned = 0usize;
+    let mut file_counts = std::collections::HashMap::new();
 
     for chunk in &session.chunks {
         if !path_matches(chunk, opts.path_filter, opts.glob) {
@@ -66,6 +74,11 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
         bytes_scanned += content.len();
         let line_matches = find_line_matches(chunk, &content, &opts, compiled.as_ref());
         total_matches += line_matches.len();
+        if !line_matches.is_empty()
+            || (opts.query.is_none() && (opts.path_filter.is_some() || opts.glob.is_some()))
+        {
+            *file_counts.entry(chunk.path.clone()).or_default() += line_matches.len().max(1);
+        }
 
         if line_matches.is_empty() {
             continue;
@@ -90,14 +103,11 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
                 break;
             }
         }
-        if results.len() >= opts.limit {
-            break;
-        }
     }
 
-    let file_summary = summarize_files(session, &opts);
+    let file_summary = summarize_files(file_counts);
 
-    json!({
+    Ok(json!({
         "session_id": session.id,
         "search_mode": if opts.regex { "regex" } else { "substring" },
         "query": opts.query,
@@ -114,7 +124,7 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
         "file_summary": file_summary,
         "matches": results,
         "hint": "Feed chunk_id values into rlm_chunk or rlm_map_plan"
-    })
+    }))
 }
 
 fn peek_bm25(session: &ScanSession, opts: PeekOptions<'_>) -> Value {
@@ -286,31 +296,13 @@ fn find_line_matches(
 
 fn preview_with_context(lines: &[&str], center: usize, radius: usize) -> String {
     let start = center.saturating_sub(radius);
-    let end = (center + radius).min(lines.len().saturating_sub(1));
+    let end = center
+        .saturating_add(radius)
+        .min(lines.len().saturating_sub(1));
     lines[start..=end].join("\n")
 }
 
-fn summarize_files(session: &ScanSession, opts: &PeekOptions<'_>) -> Vec<Value> {
-    let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-    let compiled = opts
-        .query
-        .filter(|_| opts.regex)
-        .and_then(|q| Regex::new(q).ok());
-
-    for chunk in &session.chunks {
-        if !path_matches(chunk, opts.path_filter, opts.glob) {
-            continue;
-        }
-        let content = match chunk_store::resolve_content(&session.id, chunk) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-        let n = find_line_matches(chunk, &content, opts, compiled.as_ref()).len();
-        if n > 0 || (opts.query.is_none() && (opts.path_filter.is_some() || opts.glob.is_some())) {
-            *counts.entry(chunk.path.clone()).or_default() += n.max(1);
-        }
-    }
-
+fn summarize_files(counts: std::collections::HashMap<String, usize>) -> Vec<Value> {
     let mut summary: Vec<_> = counts
         .into_iter()
         .map(|(path, match_count)| json!({ "path": path, "match_count": match_count }))
@@ -355,6 +347,63 @@ mod tests {
     }
 
     #[test]
+    fn regex_peek_honors_case_insensitive_search_and_summary() {
+        let session = test_session("first\nERROR found\nlast\n");
+        let out = peek_session(
+            &session,
+            PeekOptions {
+                query: Some("error"),
+                regex: true,
+                case_sensitive: false,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(out["returned"], 1);
+        assert_eq!(out["file_summary"][0]["match_count"], 1);
+    }
+
+    #[test]
+    fn peek_context_radius_accepts_maximum_integer_without_overflow() {
+        let session = test_session("first\nERROR found\nlast\n");
+        let out = peek_session(
+            &session,
+            PeekOptions {
+                query: Some("ERROR"),
+                context_radius: usize::MAX,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(out["matches"][0]["preview"], "first\nERROR found\nlast");
+    }
+
+    #[test]
+    fn peek_counts_matches_beyond_page_limit() {
+        let mut session = test_session("ERROR first\n");
+        let mut second = session.chunks[0].clone();
+        second.id = "c-1".into();
+        second.content = "ERROR second\n".into();
+        second.offset = 1;
+        session.chunks.push(second);
+        let out = peek_session(
+            &session,
+            PeekOptions {
+                query: Some("ERROR"),
+                limit: 1,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(out["returned"], 1);
+        assert_eq!(out["total_match_lines"], 2);
+        assert_eq!(out["truncated"], true);
+        assert_eq!(out["chunks_scanned"], 2);
+        assert_eq!(out["bytes_scanned"], "ERROR first\nERROR second\n".len());
+        assert_eq!(out["file_summary"][0]["match_count"], 2);
+    }
+
+    #[test]
     fn bm25_peek_ranks_needle_line() {
         let _guard = crate::test_lock::acquire();
         let tmp = tempfile::TempDir::new().unwrap();
@@ -373,7 +422,8 @@ mod tests {
                 limit: 5,
                 ..Default::default()
             },
-        );
+        )
+        .unwrap();
         assert_eq!(out["search_mode"].as_str().unwrap(), "bm25");
         assert!(out["returned"].as_u64().unwrap() >= 1);
         assert_eq!(out["index_source"].as_str().unwrap(), "built");
@@ -386,7 +436,8 @@ mod tests {
                 limit: 5,
                 ..Default::default()
             },
-        );
+        )
+        .unwrap();
         assert!(out2["index_hit"].as_bool().unwrap());
         assert!(
             out2["index_source"].as_str() == Some("memory")

@@ -111,7 +111,8 @@ Replace `command` with the absolute path from `install.ps1` / `install.sh`, or u
 
 The installer updates both existing `opencode.json` and `opencode.jsonc` files and `%USERPROFILE%\.codex\config.toml`. Restart the agent or open a new session after installation because MCP tools are loaded when a session starts.
 
-The MCP protocol boundary uses the official Rust SDK, `rmcp 2.2.x`, for stdio
+The MCP protocol boundary uses the official Rust SDK, `rmcp 3.x` (the exact
+version is pinned in `Cargo.lock`), for stdio
 framing, protocol negotiation, capabilities, request IDs, and error envelopes.
 The 33-tool contract remains locked by
 [`packaging/mcp/tools-list.snapshot.json`](packaging/mcp/tools-list.snapshot.json).
@@ -159,7 +160,7 @@ Images are published to **GitHub Container Registry** on every `main` push and o
 docker pull ghcr.io/stevenke1981/rlm-mcp:latest
 
 # Run in MCP stdio mode (for agent integration)
-echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | docker run -i --rm ghcr.io/stevenke1981/rlm-mcp:latest
+echo '{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke","version":"1.0"}}}' | docker run -i --rm ghcr.io/stevenke1981/rlm-mcp:latest
 
 # Run CLI command
 docker run -i --rm ghcr.io/stevenke1981/rlm-mcp:latest workflow --json
@@ -234,6 +235,35 @@ Limitations and benchmarks: [`docs/limitations.md`](docs/limitations.md), [`docs
 
 Run without args to start MCP stdio server. With a subcommand, outputs JSON:
 
+Try this offline walkthrough in PowerShell after installation. It uses synthetic
+text and the `mock` provider; no API key or paid model is required. Keep the same
+`RLM_CACHE_DIR` for all commands so separate CLI processes share the session.
+
+```powershell
+$env:RLM_CACHE_DIR = Join-Path ([IO.Path]::GetTempPath()) ("rlm-demo-" + [guid]::NewGuid())
+$scan = rlm-mcp scan --content "INFO ready`nERROR retry exhausted`nINFO stopped" --virtual-path demo.log --json | ConvertFrom-Json
+$sessionId = $scan.session_id
+rlm-mcp env-info --session-id $sessionId --json
+$peek = rlm-mcp peek --session-id $sessionId --query error --regex --ignore-case --limit 3 --json | ConvertFrom-Json
+$chunkId = $peek.matches[0].chunk_id
+rlm-mcp chunk --session-id $sessionId --chunk-id $chunkId --json
+$task = rlm-mcp task-create --session-id $sessionId --chunk-id $chunkId --prompt "Summarize the error" --provider mock --json | ConvertFrom-Json
+rlm-mcp task-reduce --root-id $task.root_id --json
+rlm-mcp session-delete --session-id $sessionId --json
+```
+
+The mock result validates the local workflow; it does not provide model reasoning.
+`session-delete` removes the persisted session and its chunk bodies. Other cache
+records may remain in the demo directory. An invalid regex returns an error
+(MCP: `isError=true`; CLI: nonzero exit with stderr). `--ignore-case` applies to
+both substring and regex searches.
+
+Equivalent MCP calls: `rlm_scan` → `rlm_env_info` → `rlm_peek` → `rlm_chunk` →
+`rlm_task_create(provider="mock")` → `rlm_task_reduce` → `rlm_session_delete`.
+Read each returned `session_id`, `chunk_id`, and `root_id` before the next call.
+
+Individual commands:
+
 ```powershell
 # Load directory
 rlm-mcp scan --path . --json
@@ -294,11 +324,30 @@ project's RLM implementation.
 | OpenCode shows no `rlm-mcp` connection after install | Re-run `.\install.ps1`; then restart OpenCode or open a new session because MCP servers are loaded at session start |
 | MCP server exits immediately | Run without subcommand for stdio MCP; use `rlm-mcp workflow --json` to verify CLI |
 | `tools/list` test fails after adding tools | `cargo test write_tools_snapshot -- --ignored` then commit snapshot |
-| Session not found across processes | Same `RLM_CACHE_DIR`; use `rlm_session_list --json` |
+| Session not found across processes | Same `RLM_CACHE_DIR`; use `rlm-mcp session-list --json` |
 | Permission denied on cache dir | Set `RLM_CACHE_DIR` to a writable directory |
 | Windows build slow | Default install does not build; use `.\install.ps1` for release binary or `.\install.ps1 -FromSource -SkipBuild` after a local dev build |
 | Windows says `rlm-mcp.exe` is being used by another process | Re-run the current installer; it falls back to `%USERPROFILE%\.config\rlm-mcp\bin\rlm-mcp-<version>.exe` and updates agent config |
 | Release smoke skipped | Run `cargo build --release` then `cargo test --test release_smoke --release` |
+
+## Development checks
+
+Use a writable, dedicated `RLM_CACHE_DIR` for manual runs. Integration tests use
+temporary synthetic fixtures; the default suite does not call paid providers.
+
+```powershell
+$env:RLM_CACHE_DIR = Join-Path ([IO.Path]::GetTempPath()) ("rlm-tests-" + [guid]::NewGuid())
+cargo test --locked --test mcp_contract --test rmcp_protocol --test cli_contract
+cargo test --locked --all-targets
+cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
+```
+
+`release_smoke` reports skipped checks until a release binary exists. To exercise
+it fully, run `cargo build --locked --release` followed by
+`cargo test --locked --release --test release_smoke`. CI also runs a dependency
+audit and Docker build. Optional large/nightly fixtures and snapshot generation
+are ignored by the default suite.
 
 ## Implementation roadmap
 

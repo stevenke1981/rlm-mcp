@@ -63,6 +63,12 @@ Even in `off` mode, the command provider:
 - Is killed if the MCP request is cancelled or if
   `RLM_PROVIDER_MAX_WALL_SECS` (default `300`) elapses.
 
+The deadline covers sending stdin, draining stdout/stderr, and waiting for exit.
+Cancellation or an I/O error kills and reaps the immediate child and closes the
+pipes. Descendants launched by that command are not managed as a process group;
+workers must manage their own subprocesses. The command REPL uses the same I/O
+handling with its configured wall limit.
+
 For production deployments:
 - Run rlm-mcp in a container (see [Docker support](#docker)).
 - Use a dedicated non-privileged user account.
