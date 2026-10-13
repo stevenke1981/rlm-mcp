@@ -17,7 +17,7 @@ name = "rlm-mcp"
 path = "src/main.rs"
 
 [dependencies]
-dirs = "6"
+dirs = "7"
 ignore = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
