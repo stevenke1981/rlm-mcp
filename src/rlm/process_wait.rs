@@ -7,6 +7,20 @@ use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio_util::sync::CancellationToken;
 
+const DEFAULT_PROVIDER_MAX_OUTPUT_BYTES: usize = 1024 * 1024;
+
+#[derive(Clone, Copy)]
+pub enum OutputLimit {
+    Fail(usize),
+    Truncate(usize),
+}
+
+pub struct CapturedOutput {
+    pub output: Output,
+    pub stdout_truncated: bool,
+    pub stderr_truncated: bool,
+}
+
 /// Run a command, draining both output pipes while sending optional stdin.
 /// The wall limit covers stdin, process exit, and output collection. Errors,
 /// cancellation, and timeouts kill and reap the immediate child and close its
@@ -17,13 +31,32 @@ pub fn run_command(
     max_wall: Option<Duration>,
     label: &str,
 ) -> Result<Output> {
+    run_command_limited(
+        command,
+        input,
+        max_wall,
+        label,
+        OutputLimit::Fail(provider_max_output()?),
+    )
+    .map(|captured| captured.output)
+}
+
+pub fn run_command_limited(
+    command: Command,
+    input: Option<&[u8]>,
+    max_wall: Option<Duration>,
+    label: &str,
+    limit: OutputLimit,
+) -> Result<CapturedOutput> {
     cancel::check()?;
     let token = cancel::current_token();
     let run = move || {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()?;
-        runtime.block_on(run_command_async(command, input, max_wall, label, token))
+        runtime.block_on(run_command_async(
+            command, input, max_wall, label, token, limit,
+        ))
     };
     // Synchronous providers may also be called from a current-thread Tokio
     // runtime. A scoped thread avoids nested block_on / block_in_place panics.
@@ -39,12 +72,36 @@ pub fn run_command(
     }
 }
 
-async fn read_pipe(pipe: Option<impl AsyncRead + Unpin>) -> std::io::Result<Vec<u8>> {
+async fn read_pipe(
+    pipe: Option<impl AsyncRead + Unpin>,
+    policy: OutputLimit,
+    stream: &str,
+) -> Result<(Vec<u8>, bool)> {
     let mut bytes = Vec::new();
+    let limit = match policy {
+        OutputLimit::Fail(limit) | OutputLimit::Truncate(limit) => limit,
+    };
+    let mut truncated = false;
     if let Some(mut pipe) = pipe {
-        pipe.read_to_end(&mut bytes).await?;
+        let mut buffer = [0u8; 8192];
+        loop {
+            let count = pipe.read(&mut buffer).await?;
+            if count == 0 {
+                break;
+            }
+            let available = limit.saturating_sub(bytes.len());
+            if count > available {
+                if matches!(policy, OutputLimit::Fail(_)) {
+                    return Err(Error::BudgetExceeded(format!(
+                        "{stream} exceeded capture limit of {limit} bytes"
+                    )));
+                }
+                truncated = true;
+            }
+            bytes.extend_from_slice(&buffer[..count.min(available)]);
+        }
     }
-    Ok(bytes)
+    Ok((bytes, truncated))
 }
 
 async fn run_command_async(
@@ -53,7 +110,8 @@ async fn run_command_async(
     max_wall: Option<Duration>,
     label: &str,
     token: Option<CancellationToken>,
-) -> Result<Output> {
+    limit: OutputLimit,
+) -> Result<CapturedOutput> {
     let mut child = tokio::process::Command::from(command)
         .kill_on_drop(true)
         .spawn()
@@ -69,18 +127,26 @@ async fn run_command_async(
                     // input may close stdin early; their exit status is decisive.
                     if let Err(error) = stdin.write_all(input).await {
                         if error.kind() != std::io::ErrorKind::BrokenPipe {
-                            return Err(error);
+                            return Err(Error::Io(error));
                         }
                     }
                 }
                 Ok(())
             };
-            let (_, stdout, stderr, status) =
-                tokio::try_join!(write, read_pipe(stdout), read_pipe(stderr), child.wait())?;
-            Ok(Output {
-                status,
-                stdout,
-                stderr,
+            let (_, (stdout, stdout_truncated), (stderr, stderr_truncated), status) = tokio::try_join!(
+                write,
+                read_pipe(stdout, limit, "stdout"),
+                read_pipe(stderr, limit, "stderr"),
+                async { child.wait().await.map_err(Error::Io) }
+            )?;
+            Ok(CapturedOutput {
+                output: Output {
+                    status,
+                    stdout,
+                    stderr,
+                },
+                stdout_truncated,
+                stderr_truncated,
             })
         };
         let cancelled = async {
@@ -101,7 +167,7 @@ async fn run_command_async(
             _ = deadline => Err(Error::Other(format!(
                 "{label} exceeded wall limit of {}s", max_wall.unwrap().as_secs_f64()
             ))),
-            result = io => result.map_err(Error::Io),
+            result = io => result,
         }
     };
     if outcome.is_err() {
@@ -109,6 +175,30 @@ async fn run_command_async(
         let _ = child.wait().await;
     }
     outcome
+}
+
+/// Positive byte cap per command output pipe and HTTP response body.
+pub fn provider_max_output() -> Result<usize> {
+    parse_output_limit(
+        std::env::var("RLM_PROVIDER_MAX_OUTPUT_BYTES")
+            .ok()
+            .as_deref(),
+    )
+}
+
+fn parse_output_limit(raw: Option<&str>) -> Result<usize> {
+    match raw {
+        None => Ok(DEFAULT_PROVIDER_MAX_OUTPUT_BYTES),
+        Some(raw) => raw
+            .parse::<usize>()
+            .ok()
+            .filter(|value| *value > 0)
+            .ok_or_else(|| {
+                Error::InvalidArgument(
+                    "RLM_PROVIDER_MAX_OUTPUT_BYTES must be a positive integer".into(),
+                )
+            }),
+    }
 }
 
 /// Parse `RLM_PROVIDER_MAX_WALL_SECS` (default 300). `0` means no limit.
@@ -153,6 +243,18 @@ mod tests {
                     assert_eq!(input, vec![b'i'; 512 * 1024]);
                 }
             }
+            Ok("oversized_stdout") | Ok("oversized_stderr") => {
+                let ready = std::env::var_os("RLM_TEST_IO_READY").unwrap();
+                std::fs::write(&ready, "ready").unwrap();
+                let bytes = vec![b'x'; 2 * 1024 * 1024];
+                if std::env::var("RLM_TEST_IO_FIXTURE").unwrap() == "oversized_stdout" {
+                    std::io::stdout().write_all(&bytes).unwrap();
+                } else {
+                    std::io::stderr().write_all(&bytes).unwrap();
+                }
+                thread::sleep(Duration::from_secs(1));
+                std::fs::write(Path::new(&ready).with_extension("survived"), "survived").unwrap();
+            }
             Ok("blocked") => {
                 let ready = std::env::var_os("RLM_TEST_IO_READY").unwrap();
                 std::fs::write(&ready, "ready").unwrap();
@@ -186,6 +288,31 @@ mod tests {
             .windows(512 * 1024)
             .any(|bytes| bytes.iter().all(|b| *b == b'o')));
         assert_eq!(output.stderr, vec![b'e'; 512 * 1024]);
+    }
+
+    #[test]
+    fn output_limit_requires_a_positive_integer() {
+        assert_eq!(parse_output_limit(None).unwrap(), 1024 * 1024);
+        assert_eq!(parse_output_limit(Some("4096")).unwrap(), 4096);
+        for value in ["0", "-1", "", "invalid"] {
+            assert!(parse_output_limit(Some(value)).is_err());
+        }
+    }
+
+    #[test]
+    fn truncation_drains_both_pipes_without_growing_capture_buffers() {
+        let captured = run_command_limited(
+            fixture("output"),
+            None,
+            Some(Duration::from_secs(3)),
+            "truncate",
+            OutputLimit::Truncate(4096),
+        )
+        .unwrap();
+        assert!(captured.output.status.success());
+        assert_eq!(captured.output.stdout.len(), 4096);
+        assert_eq!(captured.output.stderr.len(), 4096);
+        assert!(captured.stdout_truncated && captured.stderr_truncated);
     }
 
     #[test]
@@ -285,6 +412,34 @@ mod tests {
         assert!(
             !ready.with_extension("survived").exists(),
             "timed out child must not survive"
+        );
+    }
+
+    #[test]
+    fn rejects_oversized_stdout_and_reaps_child() {
+        assert_oversized_output_rejected("oversized_stdout");
+    }
+
+    #[test]
+    fn rejects_oversized_stderr_and_reaps_child() {
+        assert_oversized_output_rejected("oversized_stderr");
+    }
+
+    fn assert_oversized_output_rejected(mode: &str) {
+        let cache = tempfile::TempDir::new().unwrap();
+        let ready = cache.path().join("ready");
+        let mut command = fixture(mode);
+        command.env("RLM_TEST_IO_READY", &ready);
+        let outcome = run_command(command, None, Some(Duration::from_secs(3)), "oversized");
+        assert!(
+            matches!(outcome, Err(Error::BudgetExceeded(_))),
+            "oversized output must be rejected"
+        );
+        assert!(ready.exists(), "child must have produced the output");
+        thread::sleep(Duration::from_millis(1100));
+        assert!(
+            !ready.with_extension("survived").exists(),
+            "oversized child must not survive"
         );
     }
 

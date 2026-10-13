@@ -201,6 +201,7 @@ and release tags push to GHCR.
 | `RLM_PROVIDER_SANDBOX` | `warn` | Sandbox mode: `strict`, `warn`, or `off` (see [security](docs/security.md)) |
 | `RLM_PROVIDER_ALLOWED_DIRS` | — | Semicolon-separated allowed directories (strict mode) |
 | `RLM_PROVIDER_MAX_WALL_SECS` | `300` | Kill command provider after N seconds (`0` = no limit) |
+| `RLM_PROVIDER_MAX_OUTPUT_BYTES` | `1048576` | Positive byte cap per command stdout/stderr pipe and OpenAI HTTP response body; exceeding it fails the call |
 | `RLM_PROVIDER_MAX_RETRIES` | `3` | Provider retry attempts |
 | `RLM_PROVIDER_RETRY_DELAY_MS` | `200` | Base delay between retries (exponential backoff) |
 | `RLM_LOG_FORMAT` | `pretty` | stderr logs: `pretty` or `json` |

@@ -53,3 +53,9 @@
 **Trigger:** `tools_list_matches_snapshot` failed after expanding `rlm_task_create` provider enum without refreshing the packaging snapshot.
 **Rule:** After changing MCP tool schemas, run `cargo test write_tools_snapshot -- --ignored` and commit `packaging/mcp/tools-list.snapshot.json` in the same commit.
 **Source:** P2 provider abstraction
+
+---
+## Lesson #10 — 2026-10-13
+**Trigger:** Waiting for command exit before reading its pipes deadlocked on large output; truncating a completed response still allowed unbounded capture.
+**Rule:** Drain stdout/stderr concurrently with stdin and process wait. Apply byte limits while reading, include all I/O in the deadline, and test oversized output and blocked stdin with real local child fixtures.
+**Source:** Provider and command REPL resource regressions

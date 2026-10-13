@@ -4,7 +4,7 @@ use super::{
     SandboxLimits,
 };
 use crate::error::{Error, Result};
-use crate::rlm::process_wait::run_command;
+use crate::rlm::process_wait::{run_command_limited, OutputLimit};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -99,22 +99,33 @@ impl CommandSandboxBackend {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        let output = run_command(
+        let captured = run_command_limited(
             command,
             Some(input.as_bytes()),
             Some(timeout),
             "REPL command",
+            OutputLimit::Truncate(self.limits.max_output_bytes),
         )?;
+        let output = captured.output;
         if !output.status.success() {
             return Err(Error::Other(format!(
-                "REPL command exited {}: {}",
+                "REPL command exited {}: {}{}",
                 output.status,
-                String::from_utf8_lossy(&output.stderr).trim()
+                String::from_utf8_lossy(&output.stderr).trim(),
+                if captured.stderr_truncated {
+                    " [stderr truncated]"
+                } else {
+                    ""
+                }
             )));
         }
         let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
         let (content, truncated) = truncate_output(&stdout, &self.limits);
-        Ok((content, started.elapsed().as_millis() as u64, truncated))
+        Ok((
+            content,
+            started.elapsed().as_millis() as u64,
+            truncated || captured.stdout_truncated,
+        ))
     }
 }
 
