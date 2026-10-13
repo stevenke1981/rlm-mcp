@@ -59,9 +59,19 @@ Even in `off` mode, the command provider:
 - Runs with the same user permissions as the rlm-mcp process.
 - Receives input via stdin and environment variables (`RLM_SUB_PROMPT`,
   `RLM_SUB_CONTEXT`), not CLI arguments.
-- Output is captured from stdout.
+- Each stdout/stderr capture is bounded by `RLM_PROVIDER_MAX_OUTPUT_BYTES`
+  (default 1 MiB, positive integers only). Exceeding either cap fails the call
+  and kills and reaps the immediate child; partial provider JSON is not used.
 - Is killed if the MCP request is cancelled or if
   `RLM_PROVIDER_MAX_WALL_SECS` (default `300`) elapses.
+
+The deadline covers sending stdin, draining stdout/stderr, and waiting for exit.
+Cancellation or an I/O error kills and reaps the immediate child and closes the
+pipes. Descendants launched by that command are not managed as a process group;
+workers must manage their own subprocesses. The command REPL uses the same I/O
+handling with its configured wall limit. Command REPL output is drained while
+retaining only its existing `RLM_MAX_TRANSFORM_BYTES` byte limit (default 256 KiB), and reports stdout
+truncation rather than parsing a partial provider response.
 
 For production deployments:
 - Run rlm-mcp in a container (see [Docker support](#docker)).
@@ -88,6 +98,9 @@ $env:RLM_OPENAI_BASE_URL = "https://api.openai.com/v1"
 - HTTP uses **async reqwest** (rustls) with connection pooling. Requests abort
   when the MCP request is cancelled and honor `RLM_OPENAI_TIMEOUT_SECS`
   (default 120s; falls back to `RLM_PROVIDER_MAX_WALL_SECS` when set).
+- HTTP response bodies use the same `RLM_PROVIDER_MAX_OUTPUT_BYTES` cap, checked
+  both against Content-Length and while reading chunks. Oversized responses
+  fail before JSON parsing; cancellation and size errors are not retried.
 
 ---
 

@@ -55,7 +55,7 @@ async fn typed_router_rejects_invalid_provider_as_invalid_params() {
     });
 
     let client = ().serve(client_transport).await.expect("start rmcp client");
-    // rmcp 2.x returns a tool error result (is_error) for schema/param failures
+    // rmcp 3.x returns a tool error result (is_error) for schema/param failures
     // rather than a transport-level Err for this path.
     let result = client
         .call_tool(

@@ -72,10 +72,21 @@ fn resolve_env_cache_root(path_str: &str) -> Result<PathBuf> {
     prepare_cache_root(&PathBuf::from(trimmed))
 }
 
+#[cfg(not(test))]
 fn fallback_cache_dir() -> PathBuf {
     dirs::cache_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("rlm-mcp")
+}
+
+// Unit tests that temporarily remove RLM_CACHE_DIR must never load the user's
+// persisted sessions. The normal binary and integration library keep the OS
+// cache default; their test runners supply a dedicated RLM_CACHE_DIR.
+#[cfg(test)]
+fn fallback_cache_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("target/test-cache")
+        .join(std::process::id().to_string())
 }
 
 fn prepare_cache_root(root: &Path) -> Result<PathBuf> {

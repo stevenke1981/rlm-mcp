@@ -49,6 +49,12 @@ impl SubModelProvider for RetryProvider {
 }
 
 fn is_retryable(err: &Error) -> bool {
+    if matches!(
+        err,
+        Error::Cancelled(_) | Error::BudgetExceeded(_) | Error::InvalidArgument(_)
+    ) {
+        return false;
+    }
     let msg = err.to_string().to_lowercase();
     msg.contains("rate limit")
         || msg.contains("timeout")
@@ -87,6 +93,17 @@ mod tests {
                 usage: None,
                 cost_usd_est: None,
             })
+        }
+    }
+
+    #[test]
+    fn hard_failures_are_not_retried_based_on_message_substrings() {
+        for error in [
+            Error::Cancelled("timeout worker 503".into()),
+            Error::BudgetExceeded("output 429 limit".into()),
+            Error::InvalidArgument("timeout argument".into()),
+        ] {
+            assert!(!is_retryable(&error));
         }
     }
 

@@ -40,6 +40,57 @@ fn run_json(args: &[&str]) -> Value {
 }
 
 #[test]
+fn cli_regex_errors_and_large_context_radius_contract() {
+    let cache = TempDir::new().unwrap();
+    let run = |args: &[&str]| {
+        Command::new(bin())
+            .env("RLM_CACHE_DIR", cache.path())
+            .args(args)
+            .output()
+            .unwrap()
+    };
+    let scan = run(&["scan", "--content", "first\nERROR found\nlast\n", "--json"]);
+    assert!(scan.status.success());
+    let value: Value = serde_json::from_slice(&scan.stdout).unwrap();
+    let session_id = value["session_id"].as_str().unwrap();
+    let invalid = run(&[
+        "peek",
+        "--session-id",
+        session_id,
+        "--query",
+        "[",
+        "--regex",
+        "--json",
+    ]);
+    assert!(!invalid.status.success(), "invalid regex must fail");
+    assert!(String::from_utf8_lossy(&invalid.stderr).contains("regex"));
+    let radius = usize::MAX.to_string();
+    let valid = run(&[
+        "peek",
+        "--session-id",
+        session_id,
+        "--query",
+        "error",
+        "--regex",
+        "--ignore-case",
+        "--context",
+        &radius,
+        "--json",
+    ]);
+    assert!(
+        valid.status.success(),
+        "{}",
+        String::from_utf8_lossy(&valid.stderr)
+    );
+    let result: Value = serde_json::from_slice(&valid.stdout).unwrap();
+    assert_eq!(result["returned"], 1);
+    assert_eq!(result["matches"][0]["preview"], "first\nERROR found\nlast");
+    let deleted = run(&["session-delete", "--session-id", session_id, "--json"]);
+    assert!(deleted.status.success());
+    assert!(!cache.path().join("rlm-chunks").join(session_id).exists());
+}
+
+#[test]
 fn cli_workflow_json_contract() {
     let value = run_json(&["workflow", "--phase", "overview", "--json"]);
     assert!(value.get("phase").is_some() || value.get("overview").is_some());

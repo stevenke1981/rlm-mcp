@@ -8,6 +8,7 @@
 use super::{ProviderResult, ProviderUsage, SubModelProvider};
 use crate::error::{Error, Result};
 use crate::rlm::cancel;
+use crate::rlm::process_wait::provider_max_output;
 use serde_json::{json, Value};
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -83,6 +84,33 @@ async fn wait_for_cancel() {
         }
         tokio::time::sleep(Duration::from_millis(40)).await;
     }
+}
+
+async fn read_response_body(mut response: reqwest::Response, limit: usize) -> Result<Vec<u8>> {
+    let status = response.status();
+    let exceeded = || {
+        Error::BudgetExceeded(format!(
+            "openai response body exceeds RLM_PROVIDER_MAX_OUTPUT_BYTES ({limit} bytes)"
+        ))
+    };
+    if response
+        .content_length()
+        .is_some_and(|len| len > limit as u64)
+    {
+        return Err(exceeded());
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|e| {
+        Error::Other(format!(
+            "openai response body read failed (status {status}): {e}"
+        ))
+    })? {
+        if chunk.len() > limit.saturating_sub(body.len()) {
+            return Err(exceeded());
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
 }
 
 impl OpenAiCompatibleProvider {
@@ -178,6 +206,8 @@ impl OpenAiCompatibleProvider {
             return Err(Error::Cancelled("openai request cancelled".into()));
         }
 
+        let output_limit = provider_max_output()?;
+
         let url = format!("{}/chat/completions", self.base_url);
         let request_body = json!({
             "model": self.model,
@@ -228,19 +258,15 @@ impl OpenAiCompatibleProvider {
         }
 
         let status = response.status();
-        let body_text = tokio::select! {
+        let body_bytes = tokio::select! {
             biased;
             _ = wait_for_cancel() => {
                 return Err(Error::Cancelled("openai request cancelled".into()));
             }
-            text = response.text() => {
-                text.map_err(|e| Error::Other(format!(
-                    "openai response body read failed (status {status}): {e}"
-                )))?
-            }
+            body = read_response_body(response, output_limit) => body?
         };
 
-        let body: Value = serde_json::from_str(&body_text).map_err(|e| {
+        let body: Value = serde_json::from_slice(&body_bytes).map_err(|e| {
             Error::Other(format!(
                 "openai response parse failed (status {status}): {e}"
             ))
@@ -280,6 +306,110 @@ mod tests {
     use super::*;
     use crate::rlm::cancel::CancelGuard;
     use tokio_util::sync::CancellationToken;
+
+    #[test]
+    fn rejects_oversized_content_length_response() {
+        assert_oversized_mock_response_rejected(false);
+    }
+
+    #[test]
+    fn rejects_oversized_chunked_response_without_content_length() {
+        assert_oversized_mock_response_rejected(true);
+    }
+
+    fn assert_oversized_mock_response_rejected(chunked: bool) {
+        let body =
+            json!({"choices": [{"message": {"content": "x".repeat(2 * 1024 * 1024)}}]}).to_string();
+        let (provider, server) = mock_http_provider(body, chunked);
+        let result = provider.invoke("synthetic task", "synthetic context");
+        server.join().unwrap();
+        assert!(
+            matches!(result, Err(Error::BudgetExceeded(_))),
+            "oversized HTTP response must be rejected"
+        );
+    }
+
+    #[test]
+    fn accepts_bounded_mock_http_response() {
+        let (provider, server) = mock_http_provider(
+            json!({"choices": [{"message": {"content": "local mock result"}}]}).to_string(),
+            false,
+        );
+        let result = provider
+            .invoke("synthetic task", "synthetic context")
+            .unwrap();
+        server.join().unwrap();
+        assert_eq!(result.output, "local mock result");
+    }
+
+    fn mock_http_provider(
+        body: String,
+        chunked: bool,
+    ) -> (OpenAiCompatibleProvider, std::thread::JoinHandle<()>) {
+        use std::io::{BufRead, BufReader, Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            stream
+                .set_write_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            {
+                let mut reader = BufReader::new(&mut stream);
+                let mut content_length = 0usize;
+                let mut header_bytes = 0usize;
+                loop {
+                    let mut line = String::new();
+                    let count = reader.read_line(&mut line).unwrap();
+                    assert!(count > 0, "expected complete mock request headers");
+                    header_bytes += count;
+                    assert!(header_bytes <= 8192, "mock request headers too large");
+                    if line == "\r\n" {
+                        break;
+                    }
+                    if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                        content_length = value.trim().parse().unwrap();
+                    }
+                }
+                assert!(content_length <= 8192, "mock request body too large");
+                reader.read_exact(&mut vec![0u8; content_length]).unwrap();
+            }
+            let header = if chunked {
+                "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n"
+                    .to_string()
+            } else {
+                format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                )
+            };
+            if stream.write_all(header.as_bytes()).is_err() {
+                return;
+            }
+            if chunked && write!(stream, "{:x}\r\n", body.len()).is_err() {
+                return;
+            }
+            if stream.write_all(body.as_bytes()).is_err() {
+                return;
+            }
+            if chunked {
+                let _ = stream.write_all(b"\r\n0\r\n\r\n");
+            }
+        });
+        (
+            OpenAiCompatibleProvider {
+                api_key: "synthetic-test-key".into(),
+                base_url: format!("http://{address}/v1"),
+                model: "local-mock".into(),
+                prompt_cost_per_1k: None,
+                completion_cost_per_1k: None,
+            },
+            server,
+        )
+    }
 
     #[test]
     fn parses_openai_chat_response() {

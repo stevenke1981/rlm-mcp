@@ -331,7 +331,9 @@ fn preview_with_context(lines: &[&str], center: usize, radius: usize) -> String 
         return String::new();
     }
     let start = center.saturating_sub(radius);
-    let end = (center + radius).min(lines.len().saturating_sub(1));
+    let end = center
+        .saturating_add(radius)
+        .min(lines.len().saturating_sub(1));
     lines[start..=end].join("\n")
 }
 
@@ -388,6 +390,15 @@ mod tests {
             expires_at_unix: 0,
             revision: 3,
         }
+    }
+
+    #[test]
+    fn context_preview_accepts_maximum_radius_without_overflow() {
+        let lines = ["first", "needle", "last"];
+        assert_eq!(
+            preview_with_context(&lines, 1, usize::MAX),
+            "first\nneedle\nlast"
+        );
     }
 
     #[test]

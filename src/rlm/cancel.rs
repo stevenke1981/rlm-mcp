@@ -12,33 +12,37 @@ thread_local! {
 }
 
 /// Installs `token` for the current thread until dropped.
-pub struct CancelGuard;
+pub struct CancelGuard {
+    previous: Option<CancellationToken>,
+    // A guard must be dropped on the thread whose token it replaced.
+    _thread_bound: std::marker::PhantomData<std::rc::Rc<()>>,
+}
 
 impl CancelGuard {
     pub fn install(token: CancellationToken) -> Self {
-        CURRENT.with(|slot| {
-            *slot.borrow_mut() = Some(token);
-        });
-        Self
+        let previous = CURRENT.with(|slot| slot.borrow_mut().replace(token));
+        Self {
+            previous,
+            _thread_bound: std::marker::PhantomData,
+        }
     }
 }
 
 impl Drop for CancelGuard {
     fn drop(&mut self) {
         CURRENT.with(|slot| {
-            *slot.borrow_mut() = None;
+            *slot.borrow_mut() = self.previous.take();
         });
     }
 }
 
 /// Returns true when the current blocking request was cancelled.
 pub fn is_cancelled() -> bool {
-    CURRENT.with(|slot| {
-        slot.borrow()
-            .as_ref()
-            .map(CancellationToken::is_cancelled)
-            .unwrap_or(false)
-    })
+    current_token().is_some_and(|token| token.is_cancelled())
+}
+
+pub(crate) fn current_token() -> Option<CancellationToken> {
+    CURRENT.with(|slot| slot.borrow().clone())
 }
 
 /// Fail fast if the current request was cancelled.
@@ -85,5 +89,20 @@ mod tests {
         // avoid unused import warning on some toolchains
         let _ = Duration::from_millis(1);
         let _ = thread::available_parallelism();
+    }
+
+    #[test]
+    fn nested_guard_restores_outer_cancellation() {
+        let outer = CancellationToken::new();
+        let _outer_guard = CancelGuard::install(outer.clone());
+        {
+            let _inner_guard = CancelGuard::install(CancellationToken::new());
+            outer.cancel();
+            assert!(!is_cancelled());
+        }
+        assert!(
+            is_cancelled(),
+            "dropping the inner guard must restore the outer token"
+        );
     }
 }

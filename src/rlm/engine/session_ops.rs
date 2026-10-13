@@ -409,7 +409,7 @@ impl RlmEngine {
         let started = Instant::now();
         let query_len = opts.query.map(|q| q.len()).unwrap_or(0);
         let session = self.session_snapshot(session_id)?;
-        let out = filter::peek_session(&session, opts);
+        let out = filter::peek_session(&session, opts)?;
         self.record(
             session_id,
             "peek",

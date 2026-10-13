@@ -4,9 +4,8 @@ use super::{
     SandboxLimits,
 };
 use crate::error::{Error, Result};
-use crate::rlm::process_wait::wait_child;
+use crate::rlm::process_wait::{run_command_limited, OutputLimit};
 use serde_json::{json, Value};
-use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -93,35 +92,40 @@ impl CommandSandboxBackend {
         let started = Instant::now();
         let timeout = Duration::from_secs(self.limits.max_wall_secs);
 
-        let mut child = Command::new(&program)
+        let mut command = Command::new(&program);
+        command
             .args(&args)
             .current_dir(&cwd)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| Error::Other(format!("failed to spawn RLM_REPL_COMMAND: {e}")))?;
-
-        if let Some(mut stdin) = child.stdin.take() {
-            if let Err(e) = stdin.write_all(input.as_bytes()) {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(Error::Other(format!("REPL stdin write failed: {e}")));
-            }
-            drop(stdin);
-        }
-
-        let output = wait_child(&mut child, Some(timeout), "REPL command")?;
+            .stderr(Stdio::piped());
+        let captured = run_command_limited(
+            command,
+            Some(input.as_bytes()),
+            Some(timeout),
+            "REPL command",
+            OutputLimit::Truncate(self.limits.max_output_bytes),
+        )?;
+        let output = captured.output;
         if !output.status.success() {
             return Err(Error::Other(format!(
-                "REPL command exited {}: {}",
+                "REPL command exited {}: {}{}",
                 output.status,
-                String::from_utf8_lossy(&output.stderr).trim()
+                String::from_utf8_lossy(&output.stderr).trim(),
+                if captured.stderr_truncated {
+                    " [stderr truncated]"
+                } else {
+                    ""
+                }
             )));
         }
         let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
         let (content, truncated) = truncate_output(&stdout, &self.limits);
-        Ok((content, started.elapsed().as_millis() as u64, truncated))
+        Ok((
+            content,
+            started.elapsed().as_millis() as u64,
+            truncated || captured.stdout_truncated,
+        ))
     }
 }
 

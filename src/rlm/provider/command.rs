@@ -1,7 +1,7 @@
 use super::sandbox::{validate_command, SandboxMode};
 use super::{ProviderResult, SubModelProvider};
 use crate::error::{Error, Result};
-use crate::rlm::process_wait::{provider_max_wall, wait_child};
+use crate::rlm::process_wait::{provider_max_wall, run_command};
 use serde_json::{json, Value};
 use std::process::{Command, Stdio};
 
@@ -57,35 +57,18 @@ impl SubModelProvider for CommandProvider {
         validate_command(&self.program, self.sandbox_mode)?;
 
         let payload = json!({ "prompt": prompt, "context": context });
-        let mut child = Command::new(&self.program)
+        let mut command = Command::new(&self.program);
+        command
             .args(&self.args)
             .env("RLM_SUB_PROMPT", prompt)
             .env("RLM_SUB_CONTEXT", context)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| {
-                Error::Other(format!(
-                    "failed to spawn RLM_PROVIDER_COMMAND '{}': {e}",
-                    self.program
-                ))
-            })?;
-
-        if let Some(mut stdin) = child.stdin.take() {
-            use std::io::Write;
-            let body = payload.to_string();
-            if let Err(e) = stdin.write_all(body.as_bytes()) {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(Error::Io(e));
-            }
-            // Drop stdin so the child sees EOF.
-            drop(stdin);
-        }
-
-        let output = wait_child(
-            &mut child,
+            .stderr(Stdio::piped());
+        let body = payload.to_string();
+        let output = run_command(
+            command,
+            Some(body.as_bytes()),
             provider_max_wall(),
             &format!("command provider '{}'", self.program),
         )?;
