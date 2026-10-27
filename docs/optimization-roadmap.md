@@ -104,6 +104,14 @@ Public path unchanged: `rlm_mcp::rlm::RlmEngine`.
 
 本輪已加 `rlm_workflow(phase="triage")`：依 context 大小建議 direct / peek / full loop。
 
+### 4.5 文字搜尋預覽配置 — **Done**
+
+- substring / regex peek 只為剩餘回傳筆數建立預覽，達到 `limit` 後繼續計數，不再為未回傳命中組合上下文。
+- 保留完整 `total_match_lines`、`file_summary` 與掃描計量；`limit=0` 仍可取得計數。
+- 不分大小寫的查詢只轉換一次，路徑比對每個 chunk 計算一次；維持 Unicode 小寫比對語意。
+- 驗證：`rlm::filter::tests` 涵蓋密集命中、極大 context radius、零筆上限、Unicode 路徑與行範圍。
+- 搜尋仍需讀取所有符合路徑條件的 chunk；單筆預覽與 `include_content` 的內容大小不因此縮小。
+
 ---
 
 ## 5. P2 產品與論文對齊

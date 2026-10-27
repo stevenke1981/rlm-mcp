@@ -54,6 +54,10 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Result<Valu
                 .map_err(|error| Error::InvalidArgument(format!("invalid regex: {error}")))
         })
         .transpose()?;
+    let normalized_query = opts
+        .query
+        .filter(|_| !opts.regex && !opts.case_sensitive)
+        .map(str::to_lowercase);
 
     let mut total_matches = 0usize;
     let mut results = Vec::new();
@@ -72,22 +76,26 @@ pub fn peek_session(session: &ScanSession, opts: PeekOptions<'_>) -> Result<Valu
         };
         chunks_scanned += 1;
         bytes_scanned += content.len();
-        let line_matches = find_line_matches(chunk, &content, &opts, compiled.as_ref());
-        total_matches += line_matches.len();
-        if !line_matches.is_empty()
+        let (match_count, line_matches) = find_line_matches(
+            chunk,
+            &content,
+            &opts,
+            compiled.as_ref(),
+            normalized_query.as_deref(),
+            opts.limit.saturating_sub(results.len()),
+        );
+        total_matches += match_count;
+        if match_count > 0
             || (opts.query.is_none() && (opts.path_filter.is_some() || opts.glob.is_some()))
         {
-            *file_counts.entry(chunk.path.clone()).or_default() += line_matches.len().max(1);
+            *file_counts.entry(chunk.path.clone()).or_default() += match_count.max(1);
         }
 
         if line_matches.is_empty() {
             continue;
         }
 
-        for (line_no, preview) in line_matches
-            .into_iter()
-            .take(opts.limit.saturating_sub(results.len()))
-        {
+        for (line_no, preview) in line_matches {
             let mut entry = json!({
                 "chunk_id": chunk.id,
                 "path": chunk.path,
@@ -256,9 +264,19 @@ fn find_line_matches(
     content: &str,
     opts: &PeekOptions<'_>,
     compiled: Option<&Regex>,
-) -> Vec<(usize, String)> {
+    normalized_query: Option<&str>,
+    preview_limit: usize,
+) -> (usize, Vec<(usize, String)>) {
     let lines: Vec<&str> = content.lines().collect();
     let mut hits = Vec::new();
+    let mut match_count = 0;
+    let path_matched = if opts.regex {
+        false
+    } else if let Some(query) = normalized_query {
+        chunk.path.to_lowercase().contains(query)
+    } else {
+        opts.query.is_some_and(|query| chunk.path.contains(query))
+    };
 
     for (i, line) in lines.iter().enumerate() {
         let line_no = chunk.offset + i + 1;
@@ -276,22 +294,22 @@ fn find_line_matches(
         let matched = match opts.query {
             None => opts.path_filter.is_some() || opts.glob.is_some(),
             Some(_) if opts.regex => compiled.map(|re| re.is_match(line)).unwrap_or(false),
-            Some(q) if opts.case_sensitive => line.contains(q) || chunk.path.contains(q),
-            Some(q) => {
-                line.to_lowercase().contains(&q.to_lowercase())
-                    || chunk.path.to_lowercase().contains(&q.to_lowercase())
-            }
+            Some(q) if opts.case_sensitive => path_matched || line.contains(q),
+            Some(_) => path_matched || line.to_lowercase().contains(normalized_query.unwrap_or("")),
         };
 
         if matched {
-            hits.push((
-                line_no,
-                preview_with_context(&lines, i, opts.context_radius),
-            ));
+            match_count += 1;
+            if hits.len() < preview_limit {
+                hits.push((
+                    line_no,
+                    preview_with_context(&lines, i, opts.context_radius),
+                ));
+            }
         }
     }
 
-    hits
+    (match_count, hits)
 }
 
 fn preview_with_context(lines: &[&str], center: usize, radius: usize) -> String {
@@ -401,6 +419,68 @@ mod tests {
         assert_eq!(out["chunks_scanned"], 2);
         assert_eq!(out["bytes_scanned"], "ERROR first\nERROR second\n".len());
         assert_eq!(out["file_summary"][0]["match_count"], 2);
+    }
+
+    #[test]
+    fn dense_matches_only_materialize_requested_previews() {
+        let content = "ERROR repeated\n".repeat(10_000);
+        let session = test_session(&content);
+        let opts = PeekOptions {
+            query: Some("ERROR"),
+            context_radius: usize::MAX,
+            ..Default::default()
+        };
+        for limit in [0, 1, 3] {
+            let (count, previews) =
+                find_line_matches(&session.chunks[0], &content, &opts, None, None, limit);
+            assert_eq!(count, 10_000);
+            assert_eq!(previews.len(), limit);
+            for (index, (line, preview)) in previews.iter().enumerate() {
+                assert_eq!(*line, index + 1);
+                assert_eq!(preview, content.trim_end());
+            }
+        }
+    }
+
+    #[test]
+    fn case_insensitive_peek_preserves_unicode_paths_ranges_and_counts() {
+        let mut session = test_session("first\nÄPFEL here\nlast\n");
+        session.chunks[0].path = "ÄPFEL.txt".into();
+        let out = peek_session(
+            &session,
+            PeekOptions {
+                query: Some("äPfEl"),
+                case_sensitive: false,
+                line_start: Some(2),
+                line_end: Some(3),
+                limit: 1,
+                context_radius: 0,
+                include_content: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(out["total_match_lines"], 2);
+        assert_eq!(out["returned"], 1);
+        assert_eq!(out["truncated"], true);
+        assert_eq!(out["file_summary"][0]["match_count"], 2);
+        assert_eq!(out["matches"][0]["line"], 2);
+        assert_eq!(out["matches"][0]["preview"], "ÄPFEL here");
+        assert_eq!(out["matches"][0]["content"], session.chunks[0].content);
+
+        let zero = peek_session(
+            &session,
+            PeekOptions {
+                query: Some("äpfel"),
+                case_sensitive: false,
+                limit: 0,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(zero["returned"], 0);
+        assert_eq!(zero["total_match_lines"], 3);
+        assert_eq!(zero["truncated"], true);
     }
 
     #[test]
