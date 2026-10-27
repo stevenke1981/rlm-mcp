@@ -42,6 +42,9 @@ resolve correctly.
 Invalidated when `session.revision` changes or the session is deleted.
 Query-time postings avoid rescoring every line; chunk bodies are only loaded for
 top-k previews (`context_radius`) or `include_content`.
+Results are ranked by descending BM25 score, with ties in session source order.
+Search copies only query-term document frequencies and sorts only the selected
+top-k candidates, while retaining full-corpus statistics for scoring.
 
 ### What this is not
 

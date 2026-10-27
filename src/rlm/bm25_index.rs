@@ -285,7 +285,13 @@ pub fn search(
         }
     }
 
-    let scorer = Bm25Scorer::from_parts(index.doc_freq.clone(), index.avgdl, index.n_docs);
+    // Scoring only consults query terms; do not clone the entire vocabulary on
+    // every peek of a large session.
+    let query_doc_freq = query_tokens
+        .iter()
+        .filter_map(|term| index.doc_freq.get(term).map(|&df| (term.clone(), df)))
+        .collect();
+    let scorer = Bm25Scorer::from_parts(query_doc_freq, index.avgdl, index.n_docs);
     let mut scored: Vec<(usize, f64)> = Vec::new();
 
     for id in candidate_ids {
@@ -313,8 +319,14 @@ pub fn search(
         }
     }
 
-    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     let candidates_scored = scored.len();
+    // Use source order to break ties independently of HashSet iteration order.
+    let rank = |a: &(usize, f64), b: &(usize, f64)| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0));
+    if limit < scored.len() {
+        scored.select_nth_unstable_by(limit, rank);
+        scored.truncate(limit);
+    }
+    scored.sort_unstable_by(rank);
     let hits = scored
         .into_iter()
         .take(limit)
@@ -412,6 +424,65 @@ mod tests {
         assert!(scored >= 1);
         assert!(!hits.is_empty());
         assert!(hits[0].doc.line.to_lowercase().contains("needle"));
+    }
+
+    #[test]
+    fn tied_results_follow_source_order_for_every_limit() {
+        let session = session_with(&"needle same score\n".repeat(64));
+        let index = build_index(&session, false).unwrap();
+        let query = tokenize("needle", false);
+        for limit in [0, 1, 7, 64, 100] {
+            let (hits, scored) = search(&index, &query, None, None, None, None, limit);
+            assert_eq!(scored, 64);
+            let lines: Vec<_> = hits.iter().map(|hit| hit.doc.line_no).collect();
+            assert_eq!(lines, (1..=limit.min(64)).collect::<Vec<_>>());
+        }
+    }
+
+    #[test]
+    fn limited_search_matches_full_corpus_ranking_and_filters() {
+        let session =
+            session_with("alpha beta\nalpha alpha\nbeta gamma\nalpha beta gamma\nalpha\ngamma\n");
+        let index = build_index(&session, false).unwrap();
+        let query = tokenize("alpha alpha beta unknown", false);
+        let scorer = Bm25Scorer::from_documents(
+            &index
+                .docs
+                .iter()
+                .map(|doc| doc.tokens.clone())
+                .collect::<Vec<_>>(),
+        );
+        let mut expected: Vec<_> = index
+            .docs
+            .iter()
+            .filter(|doc| (2..=5).contains(&doc.line_no))
+            .map(|doc| (doc.line_no, scorer.score(&query, &doc.tokens)))
+            .filter(|(_, score)| *score > 0.0)
+            .collect();
+        expected.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        for limit in 0..=6 {
+            let (hits, scored) = search(
+                &index,
+                &query,
+                Some("doc"),
+                Some("*.txt"),
+                Some(2),
+                Some(5),
+                limit,
+            );
+            assert_eq!(scored, expected.len());
+            let actual: Vec<_> = hits
+                .iter()
+                .map(|hit| (hit.doc.line_no, hit.score))
+                .collect();
+            assert_eq!(
+                actual,
+                expected.iter().copied().take(limit).collect::<Vec<_>>()
+            );
+        }
+        let (hits, scored) = search(&index, &query, Some("missing"), None, None, None, 5);
+        assert!(hits.is_empty());
+        assert_eq!(scored, 0);
     }
 
     #[test]
